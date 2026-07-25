@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HUSKIES — Committee Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --navy:#0B2A4E;
+    --navy-deep:#071B33;
+    --steel:#1E4D7B;
+    --ice:#29C4E0;
+    --amber:#F2A93B;
+    --bg:#F5F8FA;
+    --ink:#10202F;
+    --ink-soft:#5B6B78;
+    --card:#FFFFFF;
+    --border:#DCE4EA;
+    --required:#C1443D;
+    --success:#2FAE6A;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.brand-word{font-family:'Oswald',sans-serif;}
+  button{font-family:'Inter',sans-serif;}
+
+  /* ---------- Login ---------- */
+  .login-wrap{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,var(--navy) 0%,var(--navy-deep) 100%);
+    padding:20px;
+  }
+  .login-card{
+    background:var(--card);border-radius:16px;padding:32px 28px;
+    width:100%;max-width:360px;box-shadow:0 20px 50px rgba(0,0,0,0.25);
+  }
+  .brand-word{font-size:1.6rem;letter-spacing:0.06em;font-weight:700;color:var(--navy);margin:0;text-align:center;}
+  .login-sub{text-align:center;color:var(--ink-soft);margin:4px 0 24px;font-size:0.9rem;}
+  .field{margin-bottom:16px;}
+  label{display:block;font-size:0.85rem;font-weight:500;margin-bottom:6px;}
+  input[type=email],input[type=password],input[type=date],input[type=text]{
+    width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:9px;
+    font-size:0.95rem;color:var(--ink);background:#fff;
+  }
+  input:focus{outline:none;border-color:var(--ice);box-shadow:0 0 0 3px rgba(41,196,224,0.18);}
+  .btn-submit{
+    width:100%;background:var(--amber);color:var(--navy-deep);border:none;
+    padding:13px;border-radius:10px;font-family:'Oswald',sans-serif;font-size:1rem;
+    font-weight:600;letter-spacing:0.03em;text-transform:uppercase;cursor:pointer;
+  }
+  .btn-submit:disabled{opacity:0.6;cursor:not-allowed;}
+  .login-error{
+    display:none;background:rgba(193,68,61,0.08);border:1.5px solid var(--required);
+    color:var(--required);padding:10px 12px;border-radius:8px;font-size:0.85rem;margin-bottom:14px;
+  }
+  .login-error.show{display:block;}
+
+  /* ---------- App shell ---------- */
+  .topbar{
+    background:linear-gradient(135deg,var(--navy) 0%,var(--navy-deep) 100%);
+    color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;
+    flex-wrap:wrap;gap:10px;
+  }
+  .topbar-brand{display:flex;align-items:baseline;gap:10px;}
+  .topbar-brand .brand-word{color:#fff;text-align:left;font-size:1.2rem;margin:0;}
+  .topbar-brand .topbar-sub{color:#BFD8EC;font-size:0.85rem;}
+  .topbar-user{display:flex;align-items:center;gap:12px;font-size:0.85rem;color:#BFD8EC;}
+  .btn-ghost{
+    background:none;border:1.5px solid var(--border);color:var(--steel);
+    padding:7px 14px;border-radius:8px;font-size:0.82rem;font-weight:500;cursor:pointer;
+  }
+  .topbar .btn-ghost{border-color:rgba(255,255,255,0.4);color:#fff;}
+
+  .tabs{
+    display:flex;gap:4px;padding:14px 24px 0;background:var(--bg);
+    border-bottom:1px solid var(--border);max-width:1000px;margin:0 auto;
+  }
+  .tab-btn{
+    background:none;border:none;padding:10px 18px;font-size:0.9rem;font-weight:600;
+    color:var(--ink-soft);cursor:pointer;border-bottom:3px solid transparent;
+  }
+  .tab-btn.active{color:var(--navy);border-bottom-color:var(--amber);}
+
+  .app-main{max-width:1000px;margin:0 auto;padding:24px;}
+  .tab-panel{display:none;}
+
+  .cards-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;}
+  @media (max-width:640px){.cards-row{grid-template-columns:1fr;}}
+  .stat-card{
+    background:var(--card);border:1px solid var(--border);border-radius:12px;
+    padding:18px;text-align:center;
+  }
+  .stat-value{display:block;font-family:'Oswald',sans-serif;font-size:2rem;font-weight:700;color:var(--navy);}
+  .stat-label{font-size:0.82rem;color:var(--ink-soft);}
+
+  .charts-row{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;}
+  @media (max-width:720px){.charts-row{grid-template-columns:1fr;}}
+  .chart-card{
+    background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;
+  }
+  .chart-card h3{margin:0 0 12px;font-size:1rem;color:var(--navy);}
+
+  #athleteSearch{max-width:320px;margin-bottom:14px;}
+
+  .table-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:auto;}
+  table{width:100%;border-collapse:collapse;font-size:0.88rem;}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--border);white-space:nowrap;}
+  th{color:var(--ink-soft);font-weight:600;font-size:0.78rem;text-transform:uppercase;letter-spacing:0.04em;background:var(--bg);}
+  tr:last-child td{border-bottom:none;}
+
+  .payments-controls{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .payments-controls label{margin:0;font-size:0.85rem;}
+  .payments-controls input{width:auto;}
+
+  .pay-toggle{
+    border:1.5px solid var(--border);background:#fff;color:var(--ink-soft);
+    padding:6px 14px;border-radius:999px;font-size:0.82rem;font-weight:600;cursor:pointer;
+  }
+  .pay-toggle.paid{background:rgba(47,174,106,0.12);border-color:var(--success);color:var(--success);}
+  .pay-toggle.unpaid{background:rgba(193,68,61,0.06);border-color:var(--required);color:var(--required);}
+
+  /* ---------- Modal ---------- */
+  .modal-overlay{
+    display:none;position:fixed;inset:0;background:rgba(7,27,51,0.55);
+    align-items:center;justify-content:center;padding:20px;z-index:50;
+  }
+  .modal-card{
+    background:#fff;border-radius:14px;max-width:520px;width:100%;
+    max-height:85vh;overflow:auto;padding:26px;position:relative;
+  }
+  .modal-close{
+    position:absolute;top:14px;right:16px;background:none;border:none;
+    font-size:1.4rem;color:var(--ink-soft);cursor:pointer;line-height:1;
+  }
+  .modal-card h2{margin:0 0 16px;color:var(--navy);}
+  .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;font-size:0.88rem;}
+  @media (max-width:480px){.modal-grid{grid-template-columns:1fr;}}
+  .modal-label{display:block;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--ink-soft);margin-bottom:2px;}
+  .modal-sig-wrap{margin-top:18px;padding-top:16px;border-top:1px solid var(--border);}
+  .modal-signature{max-width:100%;border:1px solid var(--border);border-radius:8px;margin-top:6px;}
+  .hint{font-size:0.85rem;color:var(--ink-soft);}
+</style>
+</head>
+<body>
+
+  <!-- ===== Login screen ===== -->
+  <div class="login-wrap" id="loginScreen">
+    <div class="login-card">
+      <p class="brand-word">HUSKIES</p>
+      <p class="login-sub">Committee Dashboard</p>
+      <form id="loginForm">
+        <div class="login-error" id="loginError"></div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" required>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" required>
+        </div>
+        <button type="submit" class="btn-submit">Log In</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== App shell ===== -->
+  <div id="appShell" style="display:none">
+    <div class="topbar">
+      <div class="topbar-brand">
+        <p class="brand-word">HUSKIES</p>
+        <span class="topbar-sub">Committee Dashboard</span>
+      </div>
+      <div class="topbar-user">
+        <span id="userEmail"></span>
+        <button class="btn-ghost" id="logoutBtn">Log out</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="overview">Overview</button>
+      <button class="tab-btn" data-tab="athletes">Athletes</button>
+      <button class="tab-btn" data-tab="payments">Payments</button>
+    </div>
+
+    <div class="app-main">
+
+      <!-- Overview -->
+      <div class="tab-panel" id="panel-overview" style="display:block">
+        <div class="cards-row">
+          <div class="stat-card"><span class="stat-value" id="statTotal">–</span><span class="stat-label">Total Athletes</span></div>
+          <div class="stat-card"><span class="stat-value" id="statPaid">–</span><span class="stat-label">Paid Today</span></div>
+          <div class="stat-card"><span class="stat-value" id="statUnpaid">–</span><span class="stat-label">Unpaid Today</span></div>
+        </div>
+        <div class="charts-row">
+          <div class="chart-card"><h3>Admissions by Year</h3><canvas id="chartYear"></canvas></div>
+          <div class="chart-card"><h3>Today's Payment Status</h3><canvas id="chartPayments"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Athletes -->
+      <div class="tab-panel" id="panel-athletes">
+        <input type="text" id="athleteSearch" placeholder="Search by name, school, or parent…">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Athlete</th><th>School</th><th>Year</th><th>Parent</th><th>Phone</th><th></th></tr></thead>
+            <tbody id="athletesBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Payments -->
+      <div class="tab-panel" id="panel-payments">
+        <div class="payments-controls">
+          <label for="paymentDate">Date:</label>
+          <input type="date" id="paymentDate">
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Athlete</th><th>School</th><th>Status</th></tr></thead>
+            <tbody id="paymentsBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Athlete detail modal -->
+  <div class="modal-overlay" id="athleteModal">
+    <div class="modal-card">
+      <button class="modal-close" id="modalClose">&times;</button>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+<script>
+  // ====== CONFIG ======
+  // Replace with your actual Supabase project URL and anon/publishable key
+  // (Settings → API). This key is safe to expose — RLS enforces access control.
+  const SUPABASE_URL = 'https://YOUR-PROJECT-REF.supabase.co';
+  const SUPABASE_ANON_KEY = 'YOUR-ANON-OR-PUBLISHABLE-KEY';
+
+  const { createClient } = window.supabase;
+  const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const loginScreen = document.getElementById('loginScreen');
+  const appShell = document.getElementById('appShell');
+  const loginForm = document.getElementById('loginForm');
+  const loginError = document.getElementById('loginError');
+  const userEmailEl = document.getElementById('userEmail');
+
+  let athletesCache = [];
+  let yearChart, paymentChart;
+
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  // ---------- Auth ----------
+  async function init() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      enterDashboard(session.user);
+    } else {
+      loginScreen.style.display = 'flex';
+      appShell.style.display = 'none';
+    }
+  }
+
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    loginError.classList.remove('show');
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const submitBtn = loginForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Logging in…';
+
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Log In';
+
+    if (error) {
+      loginError.textContent = error.message;
+      loginError.classList.add('show');
+      return;
+    }
+    enterDashboard(data.user);
+  });
+
+  document.getElementById('logoutBtn').addEventListener('click', async () => {
+    await sb.auth.signOut();
+    location.reload();
+  });
+
+  function enterDashboard(user) {
+    loginScreen.style.display = 'none';
+    appShell.style.display = 'block';
+    userEmailEl.textContent = user.email;
+    loadOverview();
+  }
+
+  // ---------- Tabs ----------
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.tab-panel').forEach((p) => (p.style.display = 'none'));
+      document.getElementById('panel-' + btn.dataset.tab).style.display = 'block';
+
+      if (btn.dataset.tab === 'overview') loadOverview();
+      if (btn.dataset.tab === 'athletes') loadAthletes();
+      if (btn.dataset.tab === 'payments') loadPayments();
+    });
+  });
+
+  // ---------- Overview ----------
+  async function loadOverview() {
+    const { data: athletes } = await sb.from('athletes').select('id, admission_year');
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: todaysPayments } = await sb.from('payments').select('athlete_id, status').eq('payment_date', today);
+
+    const total = athletes ? athletes.length : 0;
+    const paidCount = (todaysPayments || []).filter((p) => p.status === 'paid').length;
+    const unpaidCount = total - paidCount;
+
+    document.getElementById('statTotal').textContent = total;
+    document.getElementById('statPaid').textContent = paidCount;
+    document.getElementById('statUnpaid').textContent = unpaidCount;
+
+    const yearCounts = {};
+    (athletes || []).forEach((a) => { yearCounts[a.admission_year] = (yearCounts[a.admission_year] || 0) + 1; });
+    const years = Object.keys(yearCounts).sort();
+
+    if (yearChart) yearChart.destroy();
+    yearChart = new Chart(document.getElementById('chartYear'), {
+      type: 'bar',
+      data: { labels: years, datasets: [{ label: 'Athletes', data: years.map((y) => yearCounts[y]), backgroundColor: '#29C4E0', borderRadius: 6 }] },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+    });
+
+    if (paymentChart) paymentChart.destroy();
+    paymentChart = new Chart(document.getElementById('chartPayments'), {
+      type: 'doughnut',
+      data: { labels: ['Paid', 'Unpaid'], datasets: [{ data: [paidCount, unpaidCount], backgroundColor: ['#2FAE6A', '#C1443D'] }] },
+      options: { responsive: true }
+    });
+  }
+
+  // ---------- Athletes ----------
+  async function loadAthletes() {
+    const { data, error } = await sb.from('athletes').select('*').order('created_at', { ascending: false });
+    if (error) { console.error(error); return; }
+    athletesCache = data || [];
+    renderAthletesTable(athletesCache);
+  }
+
+  function renderAthletesTable(list) {
+    const body = document.getElementById('athletesBody');
+    body.innerHTML = '';
+    list.forEach((a) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${escapeHtml(a.athlete_name)}</td>
+        <td>${escapeHtml(a.school)}</td>
+        <td>${a.admission_year}</td>
+        <td>${escapeHtml(a.parent_name)}</td>
+        <td>${escapeHtml(a.parent_cell_phone)}</td>
+        <td><button class="btn-ghost view-btn" data-id="${a.id}">View</button></td>
+      `;
+      body.appendChild(tr);
+    });
+    body.querySelectorAll('.view-btn').forEach((btn) => {
+      btn.addEventListener('click', () => openAthleteModal(btn.dataset.id));
+    });
+  }
+
+  document.getElementById('athleteSearch').addEventListener('input', (e) => {
+    const q = e.target.value.toLowerCase();
+    const filtered = athletesCache.filter(
+      (a) =>
+        a.athlete_name.toLowerCase().includes(q) ||
+        a.school.toLowerCase().includes(q) ||
+        a.parent_name.toLowerCase().includes(q)
+    );
+    renderAthletesTable(filtered);
+  });
+
+  async function openAthleteModal(id) {
+    const a = athletesCache.find((x) => x.id === id);
+    if (!a) return;
+    let sigHtml = '<p class="hint">No signature on file.</p>';
+    if (a.signature_url) {
+      const { data, error } = await sb.storage.from('signatures').createSignedUrl(a.signature_url, 60);
+      if (!error && data) sigHtml = `<img src="${data.signedUrl}" alt="Signature" class="modal-signature">`;
+    }
+    document.getElementById('modalContent').innerHTML = `
+      <h2>${escapeHtml(a.athlete_name)}</h2>
+      <div class="modal-grid">
+        <div><span class="modal-label">School</span>${escapeHtml(a.school)}</div>
+        <div><span class="modal-label">Birth date</span>${escapeHtml(a.birth_date)}</div>
+        <div><span class="modal-label">Admission year</span>${a.admission_year}</div>
+        <div><span class="modal-label">Blood group</span>${escapeHtml(a.blood_group || '—')}</div>
+        <div><span class="modal-label">Home address</span>${escapeHtml(a.home_address || '—')}</div>
+        <div><span class="modal-label">Medical conditions</span>${escapeHtml(a.medical_conditions)}</div>
+        <div><span class="modal-label">Allergies</span>${escapeHtml(a.allergies)}</div>
+        <div><span class="modal-label">Parent/guardian</span>${escapeHtml(a.parent_name)}</div>
+        <div><span class="modal-label">Parent phone</span>${escapeHtml(a.parent_cell_phone)}</div>
+        <div><span class="modal-label">Parent email</span>${escapeHtml(a.parent_email || '—')}</div>
+        <div><span class="modal-label">Occupation</span>${escapeHtml(a.parent_occupation || '—')}</div>
+        <div><span class="modal-label">Company</span>${escapeHtml(a.parent_company || '—')}</div>
+        <div><span class="modal-label">Emergency contact</span>${escapeHtml(a.emergency_contact_name)}</div>
+        <div><span class="modal-label">Emergency phone</span>${escapeHtml(a.emergency_contact_phone)}</div>
+      </div>
+      <div class="modal-sig-wrap"><span class="modal-label">Signature</span>${sigHtml}</div>
+    `;
+    document.getElementById('athleteModal').style.display = 'flex';
+  }
+
+  document.getElementById('modalClose').addEventListener('click', () => {
+    document.getElementById('athleteModal').style.display = 'none';
+  });
+  document.getElementById('athleteModal').addEventListener('click', (e) => {
+    if (e.target.id === 'athleteModal') e.target.style.display = 'none';
+  });
+
+  // ---------- Payments ----------
+  const paymentDateInput = document.getElementById('paymentDate');
+  paymentDateInput.value = new Date().toISOString().slice(0, 10);
+  paymentDateInput.addEventListener('change', loadPayments);
+
+  async function loadPayments() {
+    if (athletesCache.length === 0) {
+      const { data } = await sb.from('athletes').select('*').order('athlete_name');
+      athletesCache = data || [];
+    }
+    const date = paymentDateInput.value;
+    const { data: payments } = await sb.from('payments').select('*').eq('payment_date', date);
+    const statusMap = {};
+    (payments || []).forEach((p) => { statusMap[p.athlete_id] = p.status; });
+
+    const body = document.getElementById('paymentsBody');
+    body.innerHTML = '';
+    athletesCache.forEach((a) => {
+      const status = statusMap[a.id] || 'unpaid';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${escapeHtml(a.athlete_name)}</td>
+        <td>${escapeHtml(a.school)}</td>
+        <td><button class="pay-toggle ${status}" data-id="${a.id}">${status === 'paid' ? 'Paid ✓' : 'Mark Paid'}</button></td>
+      `;
+      body.appendChild(tr);
+    });
+
+    body.querySelectorAll('.pay-toggle').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const athleteId = btn.dataset.id;
+        const newStatus = btn.classList.contains('paid') ? 'unpaid' : 'paid';
+        const { data: { session } } = await sb.auth.getSession();
+        const { error } = await sb.from('payments').upsert(
+          { athlete_id: athleteId, payment_date: date, status: newStatus, marked_by: session.user.email },
+          { onConflict: 'athlete_id,payment_date' }
+        );
+        if (!error) {
+          btn.classList.remove('paid', 'unpaid');
+          btn.classList.add(newStatus);
+          btn.textContent = newStatus === 'paid' ? 'Paid ✓' : 'Mark Paid';
+        }
+      });
+    });
+  }
+
+  init();
+</script>
+</body>
+</html>
