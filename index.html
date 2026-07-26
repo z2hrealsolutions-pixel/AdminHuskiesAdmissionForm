@@ -147,6 +147,43 @@
   .pay-toggle.paid{background:rgba(47,174,106,0.12);border-color:var(--success);color:var(--success);}
   .pay-toggle.unpaid{background:rgba(193,68,61,0.06);border-color:var(--required);color:var(--required);}
 
+  .session-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
+  .session-tab-btn{
+    border:1.5px solid var(--border);background:#fff;color:var(--ink-soft);
+    padding:8px 16px;border-radius:999px;font-size:0.85rem;font-weight:600;cursor:pointer;
+  }
+  .session-tab-btn.active{background:var(--navy);border-color:var(--navy);color:#fff;}
+
+  .add-athlete-row{margin-bottom:16px;}
+  .autosuggest-wrap{position:relative;max-width:360px;}
+  .autosuggest-list{
+    display:none;position:absolute;top:100%;left:0;right:0;
+    background:#fff;border:1.5px solid var(--border);border-radius:9px;
+    margin-top:4px;max-height:220px;overflow:auto;z-index:20;
+    box-shadow:0 8px 20px rgba(7,27,51,0.12);
+  }
+  .autosuggest-list.show{display:block;}
+  .autosuggest-item{padding:9px 13px;font-size:0.9rem;cursor:pointer;}
+  .autosuggest-item:hover{background:var(--bg);}
+  .autosuggest-empty{padding:9px 13px;font-size:0.85rem;color:var(--ink-soft);}
+
+  .remove-btn{
+    background:none;border:none;color:var(--required);cursor:pointer;
+    font-size:1.2rem;line-height:1;padding:2px 8px;
+  }
+
+  .summary-row{
+    display:flex;flex-wrap:wrap;align-items:end;gap:16px;margin-top:18px;
+    background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;
+  }
+  .summary-field{display:flex;flex-direction:column;gap:4px;}
+  .summary-field label{font-size:0.78rem;color:var(--ink-soft);margin:0;}
+  .summary-field input{width:120px;padding:8px 10px;}
+  .balance-display{
+    width:120px;padding:8px 10px;font-weight:700;color:var(--navy);
+    border:1.5px solid var(--border);border-radius:9px;background:var(--bg);
+  }
+
   /* ---------- Modal ---------- */
   .modal-overlay{
     display:none;position:fixed;inset:0;background:rgba(7,27,51,0.55);
@@ -212,7 +249,7 @@
     <div class="tabs">
       <button class="tab-btn active" data-tab="overview">Overview</button>
       <button class="tab-btn" data-tab="athletes">Athletes</button>
-      <button class="tab-btn" data-tab="payments">Payments</button>
+      <button class="tab-btn" data-tab="attendance">Attendance &amp; Payments</button>
     </div>
 
     <div class="app-main">
@@ -252,17 +289,43 @@
         </div>
       </div>
 
-      <!-- Payments -->
-      <div class="tab-panel" id="panel-payments">
+      <!-- Attendance & Payments -->
+      <div class="tab-panel" id="panel-attendance">
         <div class="payments-controls">
-          <label for="paymentDate">Date:</label>
-          <input type="date" id="paymentDate">
+          <label for="attendanceDate">Date:</label>
+          <input type="date" id="attendanceDate">
         </div>
+
+        <div class="session-tabs" id="sessionTabs"></div>
+
+        <div class="add-athlete-row">
+          <div class="autosuggest-wrap">
+            <input type="text" id="attendeeSearch" placeholder="Type an athlete's name to add them…" autocomplete="off">
+            <div class="autosuggest-list" id="autosuggestList"></div>
+          </div>
+        </div>
+
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Athlete</th><th>School</th><th>Status</th></tr></thead>
-            <tbody id="paymentsBody"></tbody>
+            <thead><tr><th>Athlete</th><th>School</th><th>Paid</th><th></th></tr></thead>
+            <tbody id="attendanceBody"></tbody>
           </table>
+        </div>
+
+        <div class="summary-row">
+          <div class="summary-field">
+            <label for="dailyTotal">Total</label>
+            <input type="number" id="dailyTotal" placeholder="0.00">
+          </div>
+          <div class="summary-field">
+            <label for="dailyCoachFee">Coach's Fee</label>
+            <input type="number" id="dailyCoachFee" placeholder="0.00">
+          </div>
+          <div class="summary-field">
+            <label>Balance</label>
+            <div class="balance-display" id="dailyBalance">0.00</div>
+          </div>
+          <button type="button" class="btn-ghost" id="saveSummaryBtn">Save</button>
         </div>
       </div>
 
@@ -282,9 +345,9 @@
   // ====== CONFIG ======
   // Replace with your actual Supabase project URL and anon/publishable key
   // (Settings → API). This key is safe to expose — RLS enforces access control.
-  const SUPABASE_URL = 'https://tgcruxbmrwwuckcpnond.supabase.co';
-  const SUPABASE_ANON_KEY = 'sb_publishable_2-s_R7v61ftczlAmz8Hewg_t87gk6b5';
-  
+  const SUPABASE_URL = 'https://YOUR-PROJECT-REF.supabase.co';
+  const SUPABASE_ANON_KEY = 'YOUR-ANON-OR-PUBLISHABLE-KEY';
+
   const { createClient } = window.supabase;
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -356,6 +419,7 @@
     try {
       const { data: athletes } = await sb.from('athletes').select('*').order('created_at');
       const { data: payments } = await sb.from('payments').select('*').order('payment_date');
+      const { data: summaries } = await sb.from('daily_summary').select('*').order('session_date');
 
       const athleteNameById = {};
       (athletes || []).forEach((a) => { athleteNameById[a.id] = a.athlete_name; });
@@ -379,17 +443,28 @@
         'Registered On': a.created_at,
       }));
 
-      const paymentsSheetData = (payments || []).map((p) => ({
+      const attendanceSheetData = (payments || []).map((p) => ({
         'Date': p.payment_date,
+        'Session': p.session_slot || '(no session recorded)',
         'Athlete': athleteNameById[p.athlete_id] || '(removed athlete)',
-        'Status': p.status,
+        'Attended': p.attended ? 'Yes' : 'No',
+        'Paid': p.status,
         'Amount': p.amount ?? '',
         'Marked By': p.marked_by || '',
       }));
 
+      const summarySheetData = (summaries || []).map((s) => ({
+        'Date': s.session_date,
+        'Total': s.total ?? '',
+        "Coach's Fee": s.coaches_fee ?? '',
+        'Balance': (s.total !== null && s.coaches_fee !== null) ? (s.total - s.coaches_fee) : '',
+        'Updated By': s.updated_by || '',
+      }));
+
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(athletesSheetData), 'Athletes');
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(paymentsSheetData), 'Payments');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(attendanceSheetData), 'Attendance');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summarySheetData), 'Daily Summary');
 
       const dateStr = new Date().toISOString().slice(0, 10);
       XLSX.writeFile(wb, `HBC_Admission_Data_${dateStr}.xlsx`);
@@ -418,7 +493,7 @@
 
       if (btn.dataset.tab === 'overview') loadOverview();
       if (btn.dataset.tab === 'athletes') loadAthletes();
-      if (btn.dataset.tab === 'payments') loadPayments();
+      if (btn.dataset.tab === 'attendance') renderSessionTabs();
     });
   });
 
@@ -443,11 +518,11 @@
   }
 
   // ---------- Overview ----------
-  // Note on "Unpaid": for "Today", an athlete with no payment row yet counts
-  // as unpaid (Total − Paid), matching how the Payments tab behaves day-to-day.
-  // For a custom range or All Time, there's no single "roster size" to subtract
-  // from across multiple days, so Unpaid instead reflects only payment rows
-  // explicitly logged as unpaid in that window.
+  // Now that attendance is tracked per session, one athlete can have more
+  // than one payment row on the same day (one per session attended).
+  // Paid/Unpaid counts are deduped to distinct athletes: "Paid" = attended
+  // and paid for at least one session in range; "Unpaid" = attended but
+  // has not paid for any session in range.
   async function loadOverview() {
     const range = getSelectedRange();
 
@@ -462,22 +537,26 @@
       paymentQuery = paymentQuery.gte('payment_date', range.from).lte('payment_date', range.to);
     }
     const { data: paymentsInRange } = await paymentQuery;
-    const paidCount = (paymentsInRange || []).filter((p) => p.status === 'paid').length;
+
+    const athleteStatus = {};
+    (paymentsInRange || []).forEach((p) => {
+      if (p.status === 'paid') athleteStatus[p.athlete_id] = 'paid';
+      else if (!athleteStatus[p.athlete_id]) athleteStatus[p.athlete_id] = 'unpaid';
+    });
+    const paidCount = Object.values(athleteStatus).filter((s) => s === 'paid').length;
+    const unpaidCount = Object.values(athleteStatus).filter((s) => s === 'unpaid').length;
 
     const paidLabelEl = document.getElementById('statPaidLabel');
     const unpaidLabelEl = document.getElementById('statUnpaidLabel');
     const chartTitleEl = document.getElementById('chartPaymentsTitle');
-    let unpaidCount;
 
     if (range.mode === 'today') {
-      unpaidCount = total - paidCount;
       paidLabelEl.textContent = 'Paid Today';
       unpaidLabelEl.textContent = 'Unpaid Today';
       chartTitleEl.textContent = "Today's Payment Status";
     } else {
-      unpaidCount = (paymentsInRange || []).filter((p) => p.status === 'unpaid').length;
       paidLabelEl.textContent = range.mode === 'all' ? 'Paid (All Time)' : 'Paid (Selected Range)';
-      unpaidLabelEl.textContent = range.mode === 'all' ? 'Unpaid (All Time, logged)' : 'Unpaid (Range, logged)';
+      unpaidLabelEl.textContent = range.mode === 'all' ? 'Unpaid (All Time)' : 'Unpaid (Selected Range)';
       chartTitleEl.textContent = range.mode === 'all' ? 'Payment Status (All Time)' : 'Payment Status (Selected Range)';
     }
 
@@ -581,43 +660,73 @@
     if (e.target.id === 'athleteModal') e.target.style.display = 'none';
   });
 
-  // ---------- Payments ----------
-  const paymentDateInput = document.getElementById('paymentDate');
-  paymentDateInput.value = new Date().toISOString().slice(0, 10);
-  paymentDateInput.addEventListener('change', loadPayments);
+  // ---------- Attendance & Payments ----------
+  const attendanceDateInput = document.getElementById('attendanceDate');
+  attendanceDateInput.value = new Date().toISOString().slice(0, 10);
+  attendanceDateInput.addEventListener('change', renderSessionTabs);
 
-  async function loadPayments() {
+  const WEEKDAY_SLOTS = ['4:00 PM - 5:00 PM', '5:00 PM - 6:00 PM'];
+  const WEEKEND_SLOTS = ['7:00 AM - 8:00 AM', '8:00 AM - 9:00 AM', '9:00 AM - 10:00 AM'];
+  let currentSlot = null;
+
+  function getSlotsForDate(dateStr) {
+    const day = new Date(dateStr + 'T00:00:00').getDay(); // 0 = Sunday, 6 = Saturday
+    return (day === 0 || day === 6) ? WEEKEND_SLOTS : WEEKDAY_SLOTS;
+  }
+
+  function renderSessionTabs() {
+    const slots = getSlotsForDate(attendanceDateInput.value);
+    if (!slots.includes(currentSlot)) currentSlot = slots[0];
+
+    const wrap = document.getElementById('sessionTabs');
+    wrap.innerHTML = '';
+    slots.forEach((slot) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'session-tab-btn' + (slot === currentSlot ? ' active' : '');
+      btn.textContent = slot;
+      btn.addEventListener('click', () => { currentSlot = slot; renderSessionTabs(); });
+      wrap.appendChild(btn);
+    });
+
+    loadAttendance();
+    loadDailySummary();
+  }
+
+  async function loadAttendance() {
     if (athletesCache.length === 0) {
       const { data } = await sb.from('athletes').select('*').order('athlete_name');
       athletesCache = data || [];
     }
-    const date = paymentDateInput.value;
-    const { data: payments } = await sb.from('payments').select('*').eq('payment_date', date);
-    const statusMap = {};
-    (payments || []).forEach((p) => { statusMap[p.athlete_id] = p.status; });
+    const date = attendanceDateInput.value;
+    const { data: rows } = await sb
+      .from('payments')
+      .select('*')
+      .eq('payment_date', date)
+      .eq('session_slot', currentSlot)
+      .order('created_at');
 
-    const body = document.getElementById('paymentsBody');
+    const body = document.getElementById('attendanceBody');
     body.innerHTML = '';
-    athletesCache.forEach((a) => {
-      const status = statusMap[a.id] || 'unpaid';
+    (rows || []).forEach((r) => {
+      const athlete = athletesCache.find((a) => a.id === r.athlete_id);
+      const name = athlete ? athlete.athlete_name : '(removed athlete)';
+      const school = athlete ? athlete.school : '—';
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${escapeHtml(a.athlete_name)}</td>
-        <td>${escapeHtml(a.school)}</td>
-        <td><button class="pay-toggle ${status}" data-id="${a.id}">${status === 'paid' ? 'Paid ✓' : 'Mark Paid'}</button></td>
+        <td>${escapeHtml(name)}</td>
+        <td>${escapeHtml(school)}</td>
+        <td><button class="pay-toggle ${r.status}" data-row-id="${r.id}">${r.status === 'paid' ? 'Paid ✓' : 'Mark Paid'}</button></td>
+        <td><button class="remove-btn" data-row-id="${r.id}" title="Remove">&times;</button></td>
       `;
       body.appendChild(tr);
     });
 
     body.querySelectorAll('.pay-toggle').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        const athleteId = btn.dataset.id;
+        const rowId = btn.dataset.rowId;
         const newStatus = btn.classList.contains('paid') ? 'unpaid' : 'paid';
-        const { data: { session } } = await sb.auth.getSession();
-        const { error } = await sb.from('payments').upsert(
-          { athlete_id: athleteId, payment_date: date, status: newStatus, marked_by: session.user.email },
-          { onConflict: 'athlete_id,payment_date' }
-        );
+        const { error } = await sb.from('payments').update({ status: newStatus }).eq('id', rowId);
         if (!error) {
           btn.classList.remove('paid', 'unpaid');
           btn.classList.add(newStatus);
@@ -625,7 +734,98 @@
         }
       });
     });
+
+    body.querySelectorAll('.remove-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const { error } = await sb.from('payments').delete().eq('id', btn.dataset.rowId);
+        if (!error) loadAttendance();
+      });
+    });
   }
+
+  // ---- Name autosuggest (add an athlete to this session's attendance) ----
+  const attendeeSearchInput = document.getElementById('attendeeSearch');
+  const autosuggestListEl = document.getElementById('autosuggestList');
+
+  attendeeSearchInput.addEventListener('input', () => {
+    const q = attendeeSearchInput.value.trim().toLowerCase();
+    autosuggestListEl.innerHTML = '';
+    if (!q) { autosuggestListEl.classList.remove('show'); return; }
+
+    const matches = athletesCache.filter((a) => a.athlete_name.toLowerCase().includes(q)).slice(0, 8);
+    if (matches.length === 0) {
+      autosuggestListEl.innerHTML = '<div class="autosuggest-empty">No matching athlete</div>';
+    } else {
+      matches.forEach((a) => {
+        const item = document.createElement('div');
+        item.className = 'autosuggest-item';
+        item.textContent = `${a.athlete_name} — ${a.school}`;
+        item.addEventListener('click', () => addAttendee(a.id));
+        autosuggestListEl.appendChild(item);
+      });
+    }
+    autosuggestListEl.classList.add('show');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.autosuggest-wrap')) autosuggestListEl.classList.remove('show');
+  });
+
+  async function addAttendee(athleteId) {
+    const date = attendanceDateInput.value;
+    const { data: { session } } = await sb.auth.getSession();
+    await sb.from('payments').upsert(
+      {
+        athlete_id: athleteId,
+        payment_date: date,
+        session_slot: currentSlot,
+        status: 'unpaid',
+        attended: true,
+        marked_by: session.user.email,
+      },
+      { onConflict: 'athlete_id,payment_date,session_slot' }
+    );
+    attendeeSearchInput.value = '';
+    autosuggestListEl.classList.remove('show');
+    loadAttendance();
+  }
+
+  // ---- Daily Total / Coach's Fee / Balance ----
+  const dailyTotalInput = document.getElementById('dailyTotal');
+  const dailyCoachFeeInput = document.getElementById('dailyCoachFee');
+  const dailyBalanceEl = document.getElementById('dailyBalance');
+
+  function recalcBalance() {
+    const total = parseFloat(dailyTotalInput.value) || 0;
+    const fee = parseFloat(dailyCoachFeeInput.value) || 0;
+    dailyBalanceEl.textContent = (total - fee).toFixed(2);
+  }
+  dailyTotalInput.addEventListener('input', recalcBalance);
+  dailyCoachFeeInput.addEventListener('input', recalcBalance);
+
+  async function loadDailySummary() {
+    const date = attendanceDateInput.value;
+    const { data } = await sb.from('daily_summary').select('*').eq('session_date', date).maybeSingle();
+    dailyTotalInput.value = data && data.total !== null ? data.total : '';
+    dailyCoachFeeInput.value = data && data.coaches_fee !== null ? data.coaches_fee : '';
+    recalcBalance();
+  }
+
+  document.getElementById('saveSummaryBtn').addEventListener('click', async () => {
+    const date = attendanceDateInput.value;
+    const { data: { session } } = await sb.auth.getSession();
+    const total = dailyTotalInput.value === '' ? null : parseFloat(dailyTotalInput.value);
+    const fee = dailyCoachFeeInput.value === '' ? null : parseFloat(dailyCoachFeeInput.value);
+    const btn = document.getElementById('saveSummaryBtn');
+    const original = btn.textContent;
+    btn.textContent = 'Saving…';
+    const { error } = await sb.from('daily_summary').upsert(
+      { session_date: date, total, coaches_fee: fee, updated_by: session.user.email },
+      { onConflict: 'session_date' }
+    );
+    btn.textContent = error ? 'Failed — retry' : 'Saved ✓';
+    setTimeout(() => { btn.textContent = original; }, 1500);
+  });
 
   init();
 </script>
