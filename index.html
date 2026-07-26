@@ -129,6 +129,7 @@
   .chart-card h3{margin:0 0 12px;font-size:1rem;color:var(--navy);}
 
   #athleteSearch{max-width:320px;margin-bottom:14px;}
+  .list-count{margin:0 0 10px;font-size:0.82rem;color:var(--ink-soft);}
 
   .table-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:auto;}
   table{width:100%;border-collapse:collapse;font-size:0.88rem;}
@@ -183,6 +184,33 @@
     width:120px;padding:8px 10px;font-weight:700;color:var(--navy);
     border:1.5px solid var(--border);border-radius:9px;background:var(--bg);
   }
+
+  .expenses-section{
+    margin-top:18px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;
+  }
+  .expenses-heading{margin:0 0 12px;font-size:1rem;color:var(--navy);}
+  .add-expense-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;}
+  .add-expense-row input[type=number]{width:120px;}
+  .add-expense-row input[type=text]{flex:1;min-width:180px;}
+
+  .calc-card{max-width:300px;}
+  .calc-display{
+    background:var(--bg);border:1.5px solid var(--border);border-radius:10px;
+    padding:16px;text-align:right;font-family:'Oswald',sans-serif;font-size:1.8rem;
+    font-weight:600;color:var(--navy);margin-bottom:14px;word-break:break-all;
+  }
+  .calc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .calc-btn{
+    padding:14px 0;border:1.5px solid var(--border);background:#fff;border-radius:9px;
+    font-size:1.1rem;font-weight:600;color:var(--ink);cursor:pointer;
+  }
+  .calc-btn:active{background:var(--bg);}
+  .calc-op{background:var(--bg);color:var(--steel);}
+  .calc-eq{background:var(--amber);color:var(--navy-deep);border-color:var(--amber);}
+  .calc-fn{color:var(--required);}
+  .calc-use-row{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);}
+  .calc-use-label{font-size:0.8rem;color:var(--ink-soft);display:block;margin-bottom:8px;}
+  .calc-use-buttons{display:flex;gap:8px;flex-wrap:wrap;}
 
   /* ---------- Modal ---------- */
   .modal-overlay{
@@ -281,9 +309,10 @@
       <!-- Athletes -->
       <div class="tab-panel" id="panel-athletes">
         <input type="text" id="athleteSearch" placeholder="Search by name, school, or parent…">
+        <p class="list-count" id="athletesCount"></p>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Athlete</th><th>School</th><th>Year</th><th>Parent</th><th>Phone</th><th></th></tr></thead>
+            <thead><tr><th>#</th><th>Athlete</th><th>School</th><th>Year</th><th>Parent</th><th>Phone</th><th></th></tr></thead>
             <tbody id="athletesBody"></tbody>
           </table>
         </div>
@@ -305,9 +334,10 @@
           </div>
         </div>
 
+        <p class="list-count" id="attendanceCount"></p>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Athlete</th><th>School</th><th>Paid</th><th></th></tr></thead>
+            <thead><tr><th>#</th><th>Athlete</th><th>School</th><th>Paid</th><th></th></tr></thead>
             <tbody id="attendanceBody"></tbody>
           </table>
         </div>
@@ -322,10 +352,70 @@
             <input type="number" id="dailyCoachFee" placeholder="0.00">
           </div>
           <div class="summary-field">
+            <label>Other Expenses</label>
+            <div class="balance-display" id="otherExpensesTotal">0.00</div>
+          </div>
+          <div class="summary-field">
             <label>Balance</label>
             <div class="balance-display" id="dailyBalance">0.00</div>
           </div>
+          <button type="button" class="btn-ghost" id="openCalcBtn">Calculator</button>
           <button type="button" class="btn-ghost" id="saveSummaryBtn">Save</button>
+        </div>
+
+        <div class="expenses-section">
+          <h3 class="expenses-heading">Other Expenses</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Amount</th><th>Note</th><th></th></tr></thead>
+              <tbody id="expensesBody"></tbody>
+            </table>
+          </div>
+          <div class="add-expense-row">
+            <input type="number" id="newExpenseAmount" placeholder="Amount">
+            <input type="text" id="newExpenseNote" placeholder="What was this for?">
+            <button type="button" class="btn-ghost" id="addExpenseBtn">Add Expense</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calculator -->
+      <div class="modal-overlay" id="calcModal">
+        <div class="modal-card calc-card">
+          <button class="modal-close" id="calcClose">&times;</button>
+          <div class="calc-display" id="calcDisplay">0</div>
+          <div class="calc-grid">
+            <button type="button" class="calc-btn calc-fn" data-action="clear">C</button>
+            <button type="button" class="calc-btn calc-fn" data-action="backspace">⌫</button>
+            <button type="button" class="calc-btn calc-op" data-op="÷">÷</button>
+            <button type="button" class="calc-btn calc-op" data-op="×">×</button>
+
+            <button type="button" class="calc-btn" data-digit="7">7</button>
+            <button type="button" class="calc-btn" data-digit="8">8</button>
+            <button type="button" class="calc-btn" data-digit="9">9</button>
+            <button type="button" class="calc-btn calc-op" data-op="−">−</button>
+
+            <button type="button" class="calc-btn" data-digit="4">4</button>
+            <button type="button" class="calc-btn" data-digit="5">5</button>
+            <button type="button" class="calc-btn" data-digit="6">6</button>
+            <button type="button" class="calc-btn calc-op" data-op="+">+</button>
+
+            <button type="button" class="calc-btn" data-digit="1">1</button>
+            <button type="button" class="calc-btn" data-digit="2">2</button>
+            <button type="button" class="calc-btn" data-digit="3">3</button>
+            <button type="button" class="calc-btn calc-eq" data-action="equals" style="grid-row: span 2;">=</button>
+
+            <button type="button" class="calc-btn" data-digit="0" style="grid-column: span 2;">0</button>
+            <button type="button" class="calc-btn" data-action="decimal">.</button>
+          </div>
+          <div class="calc-use-row">
+            <span class="calc-use-label">Use this result for:</span>
+            <div class="calc-use-buttons">
+              <button type="button" class="btn-ghost" data-target="total">Total</button>
+              <button type="button" class="btn-ghost" data-target="fee">Coach's Fee</button>
+              <button type="button" class="btn-ghost" data-target="expense">Other Expense</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -346,7 +436,7 @@
   // Replace with your actual Supabase project URL and anon/publishable key
   // (Settings → API). This key is safe to expose — RLS enforces access control.
   const SUPABASE_URL = 'https://tgcruxbmrwwuckcpnond.supabase.co';
-  const SUPABASE_ANON_KEY = 'sb_publishable_2-s_R7v61ftczlAmz8Hewg_t87gk6b5'
+  const SUPABASE_ANON_KEY = 'sb_publishable_2-s_R7v61ftczlAmz8Hewg_t87gk6b5';
 
   const { createClient } = window.supabase;
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -420,9 +510,15 @@
       const { data: athletes } = await sb.from('athletes').select('*').order('created_at');
       const { data: payments } = await sb.from('payments').select('*').order('payment_date');
       const { data: summaries } = await sb.from('daily_summary').select('*').order('session_date');
+      const { data: expenses } = await sb.from('other_expenses').select('*').order('session_date');
 
       const athleteNameById = {};
       (athletes || []).forEach((a) => { athleteNameById[a.id] = a.athlete_name; });
+
+      const otherExpensesByDate = {};
+      (expenses || []).forEach((e) => {
+        otherExpensesByDate[e.session_date] = (otherExpensesByDate[e.session_date] || 0) + Number(e.amount);
+      });
 
       const athletesSheetData = (athletes || []).map((a) => ({
         'Athlete Name': a.athlete_name,
@@ -453,17 +549,30 @@
         'Marked By': p.marked_by || '',
       }));
 
-      const summarySheetData = (summaries || []).map((s) => ({
-        'Date': s.session_date,
-        'Total': s.total ?? '',
-        "Coach's Fee": s.coaches_fee ?? '',
-        'Balance': (s.total !== null && s.coaches_fee !== null) ? (s.total - s.coaches_fee) : '',
-        'Updated By': s.updated_by || '',
+      const expensesSheetData = (expenses || []).map((e) => ({
+        'Date': e.session_date,
+        'Amount': e.amount,
+        'Note': e.note,
+        'Marked By': e.marked_by || '',
       }));
+
+      const summarySheetData = (summaries || []).map((s) => {
+        const otherTotal = otherExpensesByDate[s.session_date] || 0;
+        const balance = (s.total !== null && s.coaches_fee !== null) ? (s.total - s.coaches_fee - otherTotal) : '';
+        return {
+          'Date': s.session_date,
+          'Total': s.total ?? '',
+          "Coach's Fee": s.coaches_fee ?? '',
+          'Other Expenses': otherTotal,
+          'Balance': balance,
+          'Updated By': s.updated_by || '',
+        };
+      });
 
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(athletesSheetData), 'Athletes');
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(attendanceSheetData), 'Attendance');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(expensesSheetData), 'Other Expenses');
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summarySheetData), 'Daily Summary');
 
       const dateStr = new Date().toISOString().slice(0, 10);
@@ -594,9 +703,10 @@
   function renderAthletesTable(list) {
     const body = document.getElementById('athletesBody');
     body.innerHTML = '';
-    list.forEach((a) => {
+    list.forEach((a, i) => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
+        <td>${i + 1}</td>
         <td>${escapeHtml(a.athlete_name)}</td>
         <td>${escapeHtml(a.school)}</td>
         <td>${a.admission_year}</td>
@@ -609,6 +719,12 @@
     body.querySelectorAll('.view-btn').forEach((btn) => {
       btn.addEventListener('click', () => openAthleteModal(btn.dataset.id));
     });
+
+    const countEl = document.getElementById('athletesCount');
+    const total = athletesCache.length;
+    countEl.textContent = list.length === total
+      ? `${total} athlete${total === 1 ? '' : 's'}`
+      : `Showing ${list.length} of ${total} athletes`;
   }
 
   document.getElementById('athleteSearch').addEventListener('input', (e) => {
@@ -668,6 +784,7 @@
   const WEEKDAY_SLOTS = ['4:00 PM - 5:00 PM', '5:00 PM - 6:00 PM'];
   const WEEKEND_SLOTS = ['7:00 AM - 8:00 AM', '8:00 AM - 9:00 AM', '9:00 AM - 10:00 AM'];
   let currentSlot = null;
+  let currentExpenses = [];
 
   function getSlotsForDate(dateStr) {
     const day = new Date(dateStr + 'T00:00:00').getDay(); // 0 = Sunday, 6 = Saturday
@@ -691,6 +808,7 @@
 
     loadAttendance();
     loadDailySummary();
+    loadOtherExpenses();
   }
 
   async function loadAttendance() {
@@ -708,12 +826,13 @@
 
     const body = document.getElementById('attendanceBody');
     body.innerHTML = '';
-    (rows || []).forEach((r) => {
+    (rows || []).forEach((r, i) => {
       const athlete = athletesCache.find((a) => a.id === r.athlete_id);
       const name = athlete ? athlete.athlete_name : '(removed athlete)';
       const school = athlete ? athlete.school : '—';
       const tr = document.createElement('tr');
       tr.innerHTML = `
+        <td>${i + 1}</td>
         <td>${escapeHtml(name)}</td>
         <td>${escapeHtml(school)}</td>
         <td><button class="pay-toggle ${r.status}" data-row-id="${r.id}">${r.status === 'paid' ? 'Paid ✓' : 'Mark Paid'}</button></td>
@@ -721,6 +840,9 @@
       `;
       body.appendChild(tr);
     });
+
+    const count = (rows || []).length;
+    document.getElementById('attendanceCount').textContent = `${count} athlete${count === 1 ? '' : 's'} for this session`;
 
     body.querySelectorAll('.pay-toggle').forEach((btn) => {
       btn.addEventListener('click', async () => {
@@ -790,15 +912,18 @@
     loadAttendance();
   }
 
-  // ---- Daily Total / Coach's Fee / Balance ----
+  // ---- Daily Total / Coach's Fee / Other Expenses / Balance ----
   const dailyTotalInput = document.getElementById('dailyTotal');
   const dailyCoachFeeInput = document.getElementById('dailyCoachFee');
   const dailyBalanceEl = document.getElementById('dailyBalance');
+  const otherExpensesTotalEl = document.getElementById('otherExpensesTotal');
 
   function recalcBalance() {
     const total = parseFloat(dailyTotalInput.value) || 0;
     const fee = parseFloat(dailyCoachFeeInput.value) || 0;
-    dailyBalanceEl.textContent = (total - fee).toFixed(2);
+    const otherTotal = currentExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
+    otherExpensesTotalEl.textContent = otherTotal.toFixed(2);
+    dailyBalanceEl.textContent = (total - fee - otherTotal).toFixed(2);
   }
   dailyTotalInput.addEventListener('input', recalcBalance);
   dailyCoachFeeInput.addEventListener('input', recalcBalance);
@@ -825,6 +950,173 @@
     );
     btn.textContent = error ? 'Failed — retry' : 'Saved ✓';
     setTimeout(() => { btn.textContent = original; }, 1500);
+  });
+
+  // ---- Other Expenses (each entry is its own row: amount + required note) ----
+  async function loadOtherExpenses() {
+    const date = attendanceDateInput.value;
+    const { data } = await sb.from('other_expenses').select('*').eq('session_date', date).order('created_at');
+    currentExpenses = data || [];
+    renderExpensesList();
+    recalcBalance();
+  }
+
+  function renderExpensesList() {
+    const body = document.getElementById('expensesBody');
+    body.innerHTML = '';
+    currentExpenses.forEach((e) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${Number(e.amount).toFixed(2)}</td>
+        <td>${escapeHtml(e.note)}</td>
+        <td><button class="remove-btn" data-id="${e.id}" title="Remove">&times;</button></td>
+      `;
+      body.appendChild(tr);
+    });
+    body.querySelectorAll('.remove-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        await sb.from('other_expenses').delete().eq('id', btn.dataset.id);
+        loadOtherExpenses();
+      });
+    });
+  }
+
+  document.getElementById('addExpenseBtn').addEventListener('click', async () => {
+    const amountInput = document.getElementById('newExpenseAmount');
+    const noteInput = document.getElementById('newExpenseNote');
+    const amount = parseFloat(amountInput.value);
+    const note = noteInput.value.trim();
+    if (!amount || amount <= 0) { alert('Enter a valid amount.'); return; }
+    if (!note) { alert("Please add a short note for this expense — that's the whole point of tracking it separately."); return; }
+
+    const date = attendanceDateInput.value;
+    const { data: { session } } = await sb.auth.getSession();
+    await sb.from('other_expenses').insert({ session_date: date, amount, note, marked_by: session.user.email });
+    amountInput.value = '';
+    noteInput.value = '';
+    loadOtherExpenses();
+  });
+
+  // ---- Calculator ----
+  // A simple running-total calculator (no eval — standard calculator state
+  // machine). The result can be sent to whichever field the admin picks.
+  let calcDisplayValue = '0';
+  let calcFirstOperand = null;
+  let calcOperator = null;
+  let calcWaitingForSecond = false;
+  const calcDisplayEl = document.getElementById('calcDisplay');
+
+  function calcUpdateDisplay() { calcDisplayEl.textContent = calcDisplayValue; }
+
+  function calcInputDigit(digit) {
+    if (calcWaitingForSecond) {
+      calcDisplayValue = digit;
+      calcWaitingForSecond = false;
+    } else {
+      calcDisplayValue = calcDisplayValue === '0' ? digit : calcDisplayValue + digit;
+    }
+    calcUpdateDisplay();
+  }
+
+  function calcInputDecimal() {
+    if (calcWaitingForSecond) {
+      calcDisplayValue = '0.';
+      calcWaitingForSecond = false;
+    } else if (!calcDisplayValue.includes('.')) {
+      calcDisplayValue += '.';
+    }
+    calcUpdateDisplay();
+  }
+
+  function calcCompute(a, b, op) {
+    switch (op) {
+      case '+': return a + b;
+      case '−': return a - b;
+      case '×': return a * b;
+      case '÷': return b === 0 ? 0 : a / b;
+      default: return b;
+    }
+  }
+
+  function calcHandleOperator(nextOp) {
+    const inputValue = parseFloat(calcDisplayValue);
+    if (calcOperator && calcWaitingForSecond) {
+      calcOperator = nextOp;
+      return;
+    }
+    if (calcFirstOperand === null) {
+      calcFirstOperand = inputValue;
+    } else if (calcOperator) {
+      const result = calcCompute(calcFirstOperand, inputValue, calcOperator);
+      calcDisplayValue = String(parseFloat(result.toFixed(6)));
+      calcFirstOperand = result;
+      calcUpdateDisplay();
+    }
+    calcWaitingForSecond = true;
+    calcOperator = nextOp;
+  }
+
+  function calcHandleEquals() {
+    if (calcOperator === null || calcFirstOperand === null) return;
+    const inputValue = parseFloat(calcDisplayValue);
+    const result = calcCompute(calcFirstOperand, inputValue, calcOperator);
+    calcDisplayValue = String(parseFloat(result.toFixed(6)));
+    calcFirstOperand = null;
+    calcOperator = null;
+    calcWaitingForSecond = false;
+    calcUpdateDisplay();
+  }
+
+  function calcClear() {
+    calcDisplayValue = '0';
+    calcFirstOperand = null;
+    calcOperator = null;
+    calcWaitingForSecond = false;
+    calcUpdateDisplay();
+  }
+
+  function calcBackspace() {
+    if (calcWaitingForSecond) return;
+    calcDisplayValue = calcDisplayValue.length > 1 ? calcDisplayValue.slice(0, -1) : '0';
+    calcUpdateDisplay();
+  }
+
+  document.querySelectorAll('.calc-btn[data-digit]').forEach((btn) => {
+    btn.addEventListener('click', () => calcInputDigit(btn.dataset.digit));
+  });
+  document.querySelectorAll('.calc-btn[data-op]').forEach((btn) => {
+    btn.addEventListener('click', () => calcHandleOperator(btn.dataset.op));
+  });
+  document.querySelector('[data-action="equals"]').addEventListener('click', calcHandleEquals);
+  document.querySelector('[data-action="clear"]').addEventListener('click', calcClear);
+  document.querySelector('[data-action="decimal"]').addEventListener('click', calcInputDecimal);
+  document.querySelector('[data-action="backspace"]').addEventListener('click', calcBackspace);
+
+  document.getElementById('openCalcBtn').addEventListener('click', () => {
+    calcClear();
+    document.getElementById('calcModal').style.display = 'flex';
+  });
+  document.getElementById('calcClose').addEventListener('click', () => {
+    document.getElementById('calcModal').style.display = 'none';
+  });
+  document.getElementById('calcModal').addEventListener('click', (e) => {
+    if (e.target.id === 'calcModal') e.target.style.display = 'none';
+  });
+
+  document.querySelectorAll('.calc-use-buttons button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const value = calcDisplayValue;
+      if (btn.dataset.target === 'total') {
+        dailyTotalInput.value = value;
+        recalcBalance();
+      } else if (btn.dataset.target === 'fee') {
+        dailyCoachFeeInput.value = value;
+        recalcBalance();
+      } else if (btn.dataset.target === 'expense') {
+        document.getElementById('newExpenseAmount').value = value;
+      }
+      document.getElementById('calcModal').style.display = 'none';
+    });
   });
 
   init();
