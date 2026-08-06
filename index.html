@@ -131,6 +131,19 @@
   #athleteSearch{max-width:320px;margin-bottom:14px;}
   .list-count{margin:0 0 10px;font-size:0.82rem;color:var(--ink-soft);}
 
+  .filter-row th{background:var(--bg);padding:6px 8px;}
+  .col-filter{
+    width:100%;padding:6px 8px;border:1.5px solid var(--border);border-radius:7px;
+    font-size:0.8rem;font-family:'Inter',sans-serif;color:var(--ink);background:#fff;
+  }
+  tr.inactive-row{opacity:0.55;}
+  .active-checkbox{width:18px;height:18px;accent-color:var(--success);cursor:pointer;}
+
+  .confirm-card{max-width:340px;text-align:center;}
+  .confirm-message{font-size:0.98rem;color:var(--ink);margin:4px 0 20px;line-height:1.5;}
+  .confirm-actions{display:flex;gap:10px;justify-content:center;}
+  .confirm-actions .btn-ghost, .confirm-actions .btn-submit{flex:1;}
+
   .table-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:auto;}
   table{width:100%;border-collapse:collapse;font-size:0.88rem;}
   th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--border);white-space:nowrap;}
@@ -192,6 +205,18 @@
   .add-expense-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;}
   .add-expense-row input[type=number]{width:120px;}
   .add-expense-row input[type=text]{flex:1;min-width:180px;}
+
+  /* Inline-editable table cells (Coach Analytics) */
+  .cell-input{
+    width:100%;padding:6px 8px;border:1.5px solid transparent;border-radius:7px;
+    font-size:0.88rem;font-family:'Inter',sans-serif;color:var(--ink);background:transparent;
+  }
+  .cell-input:hover{border-color:var(--border);}
+  .cell-input:focus{outline:none;border-color:var(--ice);background:#fff;box-shadow:0 0 0 2px rgba(41,196,224,0.15);}
+  .cell-input[type=number]{max-width:110px;}
+  .save-indicator{font-size:0.75rem;color:var(--success);opacity:0;transition:opacity .2s ease;white-space:nowrap;}
+  .save-indicator.show{opacity:1;}
+  .save-indicator.saving{color:var(--ink-soft);}
 
   .calc-card{max-width:300px;}
   .calc-display{
@@ -278,6 +303,7 @@
       <button class="tab-btn active" data-tab="overview">Overview</button>
       <button class="tab-btn" data-tab="athletes">Athletes</button>
       <button class="tab-btn" data-tab="attendance">Attendance &amp; Payments</button>
+      <button class="tab-btn" data-tab="coaches">Coach Analytics</button>
     </div>
 
     <div class="app-main">
@@ -308,13 +334,47 @@
 
       <!-- Athletes -->
       <div class="tab-panel" id="panel-athletes">
-        <input type="text" id="athleteSearch" placeholder="Search by name, school, or parent…">
+        <input type="text" id="athleteSearch" placeholder="Search by name, school, parent, or phone…">
         <p class="list-count" id="athletesCount"></p>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>#</th><th>Athlete</th><th>School</th><th>Year</th><th>Parent</th><th>Phone</th><th></th></tr></thead>
+            <thead>
+              <tr>
+                <th>#</th><th>Athlete</th><th>School</th><th>Year</th><th>Parent</th>
+                <th>Phone</th><th>Age</th><th>Gender</th><th>Active</th><th></th>
+              </tr>
+              <tr class="filter-row">
+                <th></th>
+                <th><input type="text" class="col-filter" data-col="name" placeholder="Filter…"></th>
+                <th><select class="col-filter" data-col="school"><option value="">All</option></select></th>
+                <th><select class="col-filter" data-col="year"><option value="">All</option></select></th>
+                <th><input type="text" class="col-filter" data-col="parent" placeholder="Filter…"></th>
+                <th><input type="text" class="col-filter" data-col="phone" placeholder="Filter…"></th>
+                <th><select class="col-filter" data-col="age"><option value="">All</option></select></th>
+                <th><select class="col-filter" data-col="gender"><option value="">All</option></select></th>
+                <th>
+                  <select class="col-filter" data-col="active">
+                    <option value="">All</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </th>
+                <th></th>
+              </tr>
+            </thead>
             <tbody id="athletesBody"></tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- Confirm deactivation -->
+      <div class="modal-overlay" id="confirmModal">
+        <div class="modal-card confirm-card">
+          <p class="confirm-message" id="confirmMessage"></p>
+          <div class="confirm-actions">
+            <button type="button" class="btn-ghost" id="confirmNoBtn">No</button>
+            <button type="button" class="btn-submit" id="confirmYesBtn">Yes</button>
+          </div>
         </div>
       </div>
 
@@ -337,7 +397,7 @@
         <p class="list-count" id="attendanceCount"></p>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>#</th><th>Athlete</th><th>School</th><th>Paid</th><th></th></tr></thead>
+            <thead><tr><th>#</th><th>Athlete</th><th>School</th><th>Attendance</th><th>Paid</th><th></th></tr></thead>
             <tbody id="attendanceBody"></tbody>
           </table>
         </div>
@@ -419,8 +479,36 @@
         </div>
       </div>
 
+      <!-- Coach Analytics -->
+      <div class="tab-panel" id="panel-coaches">
+        <input type="text" id="coachSearch" placeholder="Search by name or phone…">
+        <p class="list-count" id="coachesCount"></p>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Price / Hour</th><th>Active</th><th></th><th></th></tr></thead>
+            <tbody id="coachesBody"></tbody>
+          </table>
+        </div>
+
+        <div class="add-expense-row">
+          <input type="text" id="newCoachName" placeholder="Coach name">
+          <input type="text" id="newCoachPhone" placeholder="Phone number">
+          <input type="number" id="newCoachPrice" placeholder="Price per hour">
+          <button type="button" class="btn-ghost" id="addCoachBtn">Add Coach</button>
+        </div>
+      </div>
+
     </div>
     <div class="app-footer">Designed and Developed by Z2HxRealSolutions</div>
+  </div>
+
+  <!-- Coach detail modal -->
+  <div class="modal-overlay" id="coachModal">
+    <div class="modal-card">
+      <button class="modal-close" id="coachModalClose">&times;</button>
+      <div id="coachModalContent"></div>
+    </div>
   </div>
 
   <!-- Athlete detail modal -->
@@ -448,6 +536,7 @@
   const userEmailEl = document.getElementById('userEmail');
 
   let athletesCache = [];
+  let coachesCache = [];
   let yearChart, paymentChart;
 
   function escapeHtml(str) {
@@ -524,7 +613,10 @@
         'Athlete Name': a.athlete_name,
         'School': a.school,
         'Birth Date': a.birth_date,
+        'Age': calculateAge(a.birth_date),
+        'Gender': a.gender || '',
         'Admission Year': a.admission_year,
+        'Status': a.active !== false ? 'Active' : 'Inactive',
         'Home Address': a.home_address || '',
         'Blood Group': a.blood_group || '',
         'Medical Conditions': a.medical_conditions,
@@ -603,6 +695,7 @@
       if (btn.dataset.tab === 'overview') loadOverview();
       if (btn.dataset.tab === 'athletes') loadAthletes();
       if (btn.dataset.tab === 'attendance') renderSessionTabs();
+      if (btn.dataset.tab === 'coaches') loadCoaches();
     });
   });
 
@@ -635,17 +728,20 @@
   async function loadOverview() {
     const range = getSelectedRange();
 
-    // Total Athletes — always the full roster, not range-filtered
-    const { data: allAthletes } = await sb.from('athletes').select('id, admission_year');
-    const total = allAthletes ? allAthletes.length : 0;
+    // Total Athletes — always the full roster, not range-filtered, active only
+    const { data: allAthletesRaw } = await sb.from('athletes').select('id, admission_year, active');
+    const allAthletes = (allAthletesRaw || []).filter((a) => a.active !== false);
+    const total = allAthletes.length;
     document.getElementById('statTotal').textContent = total;
+    const activeIds = new Set(allAthletes.map((a) => a.id));
 
-    // Payments within the selected range
+    // Payments within the selected range (active athletes only)
     let paymentQuery = sb.from('payments').select('athlete_id, status, payment_date');
     if (range.mode !== 'all') {
       paymentQuery = paymentQuery.gte('payment_date', range.from).lte('payment_date', range.to);
     }
-    const { data: paymentsInRange } = await paymentQuery;
+    const { data: paymentsInRangeRaw } = await paymentQuery;
+    const paymentsInRange = (paymentsInRangeRaw || []).filter((p) => activeIds.has(p.athlete_id));
 
     const athleteStatus = {};
     (paymentsInRange || []).forEach((p) => {
@@ -693,18 +789,114 @@
   }
 
   // ---------- Athletes ----------
+  function calculateAge(birthDateIso) {
+    if (!birthDateIso) return '—';
+    const today = new Date();
+    const dob = new Date(birthDateIso + 'T00:00:00');
+    let age = today.getFullYear() - dob.getFullYear();
+    const hadBirthdayThisYear =
+      today.getMonth() > dob.getMonth() ||
+      (today.getMonth() === dob.getMonth() && today.getDate() >= dob.getDate());
+    if (!hadBirthdayThisYear) age--;
+    return age + 'Y';
+  }
+
+  // ---- Custom confirm dialog (styled, replaces native confirm()) ----
+  let confirmResolve = null;
+  function showConfirm(message) {
+    document.getElementById('confirmMessage').textContent = message;
+    document.getElementById('confirmModal').style.display = 'flex';
+    return new Promise((resolve) => { confirmResolve = resolve; });
+  }
+  document.getElementById('confirmYesBtn').addEventListener('click', () => {
+    document.getElementById('confirmModal').style.display = 'none';
+    if (confirmResolve) confirmResolve(true);
+  });
+  document.getElementById('confirmNoBtn').addEventListener('click', () => {
+    document.getElementById('confirmModal').style.display = 'none';
+    if (confirmResolve) confirmResolve(false);
+  });
+
+  async function setAthleteActive(id, active) {
+    const { error } = await sb.from('athletes').update({ active }).eq('id', id);
+    if (!error) {
+      const athlete = athletesCache.find((a) => a.id === id);
+      if (athlete) athlete.active = active;
+      populateAthleteFilterOptions();
+      applyAthleteFilters();
+    }
+    return !error;
+  }
+
   async function loadAthletes() {
     const { data, error } = await sb.from('athletes').select('*').order('created_at', { ascending: false });
     if (error) { console.error(error); return; }
     athletesCache = data || [];
-    renderAthletesTable(athletesCache);
+    populateAthleteFilterOptions();
+    applyAthleteFilters();
+  }
+
+  function populateAthleteFilterOptions() {
+    const schools = [...new Set(athletesCache.map((a) => a.school))].sort();
+    const years = [...new Set(athletesCache.map((a) => a.admission_year))].sort((a, b) => b - a);
+    const ages = [...new Set(athletesCache.map((a) => calculateAge(a.birth_date)))].sort();
+    const genders = [...new Set(athletesCache.map((a) => a.gender).filter(Boolean))].sort();
+
+    fillSelect('school', schools);
+    fillSelect('year', years);
+    fillSelect('age', ages);
+    fillSelect('gender', genders);
+
+    function fillSelect(col, values) {
+      const el = document.querySelector(`.col-filter[data-col="${col}"]`);
+      const current = el.value;
+      el.innerHTML = '<option value="">All</option>' + values.map((v) => `<option value="${v}">${v}</option>`).join('');
+      if (values.includes(current)) el.value = current;
+    }
+  }
+
+  function applyAthleteFilters() {
+    const searchQ = document.getElementById('athleteSearch').value.trim().toLowerCase();
+    const colFilters = {};
+    document.querySelectorAll('.col-filter').forEach((el) => { colFilters[el.dataset.col] = el.value.trim().toLowerCase(); });
+
+    let filtered = athletesCache.filter((a) => {
+      if (searchQ) {
+        const hay = `${a.athlete_name} ${a.school} ${a.parent_name} ${a.parent_cell_phone}`.toLowerCase();
+        if (!hay.includes(searchQ)) return false;
+      }
+      if (colFilters.name && !a.athlete_name.toLowerCase().includes(colFilters.name)) return false;
+      if (colFilters.school && a.school.toLowerCase() !== colFilters.school) return false;
+      if (colFilters.year && String(a.admission_year) !== colFilters.year) return false;
+      if (colFilters.parent && !a.parent_name.toLowerCase().includes(colFilters.parent)) return false;
+      if (colFilters.phone && !a.parent_cell_phone.toLowerCase().includes(colFilters.phone)) return false;
+      if (colFilters.age && calculateAge(a.birth_date).toLowerCase() !== colFilters.age) return false;
+      if (colFilters.gender && (a.gender || '').toLowerCase() !== colFilters.gender) return false;
+      if (colFilters.active) {
+        const isActive = a.active !== false;
+        if (colFilters.active === 'active' && !isActive) return false;
+        if (colFilters.active === 'inactive' && isActive) return false;
+      }
+      return true;
+    });
+
+    // Active athletes first, inactive ones at the very bottom
+    filtered = filtered.slice().sort((a, b) => {
+      const activeA = a.active !== false, activeB = b.active !== false;
+      if (activeA === activeB) return 0;
+      return activeA ? -1 : 1;
+    });
+
+    renderAthletesTable(filtered);
   }
 
   function renderAthletesTable(list) {
     const body = document.getElementById('athletesBody');
     body.innerHTML = '';
     list.forEach((a, i) => {
+      const isActive = a.active !== false;
       const tr = document.createElement('tr');
+      if (!isActive) tr.classList.add('inactive-row');
       tr.innerHTML = `
         <td>${i + 1}</td>
         <td>${escapeHtml(a.athlete_name)}</td>
@@ -712,12 +904,27 @@
         <td>${a.admission_year}</td>
         <td>${escapeHtml(a.parent_name)}</td>
         <td>${escapeHtml(a.parent_cell_phone)}</td>
+        <td>${calculateAge(a.birth_date)}</td>
+        <td>${escapeHtml(a.gender || '—')}</td>
+        <td><input type="checkbox" class="active-checkbox" data-id="${a.id}" ${isActive ? 'checked' : ''}></td>
         <td><button class="btn-ghost view-btn" data-id="${a.id}">View</button></td>
       `;
       body.appendChild(tr);
     });
     body.querySelectorAll('.view-btn').forEach((btn) => {
       btn.addEventListener('click', () => openAthleteModal(btn.dataset.id));
+    });
+    body.querySelectorAll('.active-checkbox').forEach((cb) => {
+      cb.addEventListener('change', async (e) => {
+        const id = e.target.dataset.id;
+        if (!e.target.checked) {
+          const confirmed = await showConfirm('Do you wish to remove the athlete from the pack?');
+          if (!confirmed) { e.target.checked = true; return; }
+          await setAthleteActive(id, false);
+        } else {
+          await setAthleteActive(id, true);
+        }
+      });
     });
 
     const countEl = document.getElementById('athletesCount');
@@ -727,15 +934,10 @@
       : `Showing ${list.length} of ${total} athletes`;
   }
 
-  document.getElementById('athleteSearch').addEventListener('input', (e) => {
-    const q = e.target.value.toLowerCase();
-    const filtered = athletesCache.filter(
-      (a) =>
-        a.athlete_name.toLowerCase().includes(q) ||
-        a.school.toLowerCase().includes(q) ||
-        a.parent_name.toLowerCase().includes(q)
-    );
-    renderAthletesTable(filtered);
+  document.getElementById('athleteSearch').addEventListener('input', applyAthleteFilters);
+  document.querySelectorAll('.col-filter').forEach((el) => {
+    el.addEventListener('input', applyAthleteFilters);
+    el.addEventListener('change', applyAthleteFilters);
   });
 
   async function openAthleteModal(id) {
@@ -751,7 +953,10 @@
       <div class="modal-grid">
         <div><span class="modal-label">School</span>${escapeHtml(a.school)}</div>
         <div><span class="modal-label">Birth date</span>${escapeHtml(a.birth_date)}</div>
+        <div><span class="modal-label">Age</span>${calculateAge(a.birth_date)}</div>
+        <div><span class="modal-label">Gender</span>${escapeHtml(a.gender || '—')}</div>
         <div><span class="modal-label">Admission year</span>${a.admission_year}</div>
+        <div><span class="modal-label">Status</span>${a.active !== false ? 'Active' : 'Inactive'}</div>
         <div><span class="modal-label">Blood group</span>${escapeHtml(a.blood_group || '—')}</div>
         <div><span class="modal-label">Home address</span>${escapeHtml(a.home_address || '—')}</div>
         <div><span class="modal-label">Medical conditions</span>${escapeHtml(a.medical_conditions)}</div>
@@ -781,7 +986,7 @@
   attendanceDateInput.value = new Date().toISOString().slice(0, 10);
   attendanceDateInput.addEventListener('change', renderSessionTabs);
 
-  const WEEKDAY_SLOTS = ['4:00 PM - 5:00 PM', '5:00 PM - 6:00 PM'];
+  const WEEKDAY_SLOTS = ['4:00 PM - 5:00 PM', '5:00 PM - 6:00 PM', 'Team Practice'];
   const WEEKEND_SLOTS = ['7:00 AM - 8:00 AM', '8:00 AM - 9:00 AM', '9:00 AM - 10:00 AM'];
   let currentSlot = null;
   let currentExpenses = [];
@@ -826,23 +1031,43 @@
 
     const body = document.getElementById('attendanceBody');
     body.innerHTML = '';
-    (rows || []).forEach((r, i) => {
+
+    // Active athletes first, inactive (but still historically present) at the bottom
+    const sortedRows = (rows || []).slice().sort((r1, r2) => {
+      const a1 = athletesCache.find((a) => a.id === r1.athlete_id);
+      const a2 = athletesCache.find((a) => a.id === r2.athlete_id);
+      const active1 = a1 ? a1.active !== false : true;
+      const active2 = a2 ? a2.active !== false : true;
+      if (active1 === active2) return 0;
+      return active1 ? -1 : 1;
+    });
+
+    sortedRows.forEach((r, i) => {
       const athlete = athletesCache.find((a) => a.id === r.athlete_id);
       const name = athlete ? athlete.athlete_name : '(removed athlete)';
       const school = athlete ? athlete.school : '—';
+      const isActive = athlete ? athlete.active !== false : true;
       const tr = document.createElement('tr');
+      if (!isActive) tr.classList.add('inactive-row');
       tr.innerHTML = `
         <td>${i + 1}</td>
         <td>${escapeHtml(name)}</td>
         <td>${escapeHtml(school)}</td>
-        <td><button class="pay-toggle ${r.status}" data-row-id="${r.id}">${r.status === 'paid' ? 'Paid ✓' : 'Mark Paid'}</button></td>
+        <td><input type="checkbox" class="attend-checkbox" data-row-id="${r.id}" ${r.attended ? 'checked' : ''}></td>
+        <td><button class="pay-toggle ${r.status}" data-row-id="${r.id}">${r.status === 'paid' ? 'Paid ✓' : 'Not Paid'}</button></td>
         <td><button class="remove-btn" data-row-id="${r.id}" title="Remove">&times;</button></td>
       `;
       body.appendChild(tr);
     });
 
-    const count = (rows || []).length;
+    const count = sortedRows.length;
     document.getElementById('attendanceCount').textContent = `${count} athlete${count === 1 ? '' : 's'} for this session`;
+
+    body.querySelectorAll('.attend-checkbox').forEach((cb) => {
+      cb.addEventListener('change', async (e) => {
+        await sb.from('payments').update({ attended: e.target.checked }).eq('id', e.target.dataset.rowId);
+      });
+    });
 
     body.querySelectorAll('.pay-toggle').forEach((btn) => {
       btn.addEventListener('click', async () => {
@@ -852,7 +1077,7 @@
         if (!error) {
           btn.classList.remove('paid', 'unpaid');
           btn.classList.add(newStatus);
-          btn.textContent = newStatus === 'paid' ? 'Paid ✓' : 'Mark Paid';
+          btn.textContent = newStatus === 'paid' ? 'Paid ✓' : 'Not Paid';
         }
       });
     });
@@ -874,7 +1099,11 @@
     autosuggestListEl.innerHTML = '';
     if (!q) { autosuggestListEl.classList.remove('show'); return; }
 
-    const matches = athletesCache.filter((a) => a.athlete_name.toLowerCase().includes(q)).slice(0, 8);
+    // Inactive athletes can't be newly added to a session, though their
+    // historical rows still show in the list above.
+    const matches = athletesCache
+      .filter((a) => a.active !== false && a.athlete_name.toLowerCase().includes(q))
+      .slice(0, 8);
     if (matches.length === 0) {
       autosuggestListEl.innerHTML = '<div class="autosuggest-empty">No matching athlete</div>';
     } else {
@@ -1117,6 +1346,168 @@
       }
       document.getElementById('calcModal').style.display = 'none';
     });
+  });
+
+  // ---------- Coach Analytics ----------
+  function debounce(fn, delay) {
+    let timer;
+    return function (...args) {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn.apply(this, args), delay);
+    };
+  }
+
+  function flashSaveIndicator(el, ok) {
+    el.classList.remove('saving');
+    el.textContent = ok ? 'Saved ✓' : 'Failed to save';
+    el.style.color = ok ? 'var(--success)' : 'var(--required)';
+    el.classList.add('show');
+    clearTimeout(el._hideTimer);
+    el._hideTimer = setTimeout(() => el.classList.remove('show'), 1500);
+  }
+
+  async function loadCoaches() {
+    const { data, error } = await sb.from('coaches').select('*').order('created_at');
+    if (error) { console.error(error); return; }
+    coachesCache = data || [];
+    renderCoachesTable(coachesCache);
+  }
+
+  function renderCoachesTable(list) {
+    const body = document.getElementById('coachesBody');
+    body.innerHTML = '';
+    list.forEach((c, i) => {
+      const isActive = c.active !== false;
+      const tr = document.createElement('tr');
+      if (!isActive) tr.classList.add('inactive-row');
+      tr.innerHTML = `
+        <td>${i + 1}</td>
+        <td><input type="text" class="cell-input coach-name-input" value="${escapeHtml(c.name)}" data-id="${c.id}"></td>
+        <td><input type="text" class="cell-input coach-phone-input" value="${escapeHtml(c.phone || '')}" data-id="${c.id}"></td>
+        <td><input type="number" class="cell-input coach-price-input" value="${c.price_per_hour}" data-id="${c.id}"></td>
+        <td><input type="checkbox" class="active-checkbox coach-active-checkbox" data-id="${c.id}" ${isActive ? 'checked' : ''}></td>
+        <td><span class="save-indicator" id="saveInd-${c.id}"></span></td>
+        <td><button class="btn-ghost view-coach-btn" data-id="${c.id}">View</button></td>
+      `;
+      body.appendChild(tr);
+    });
+
+    const saveField = debounce(async (id, field, value, indEl) => {
+      indEl.classList.add('show', 'saving');
+      indEl.textContent = 'Saving…';
+      const { error } = await sb.from('coaches').update({ [field]: value }).eq('id', id);
+      flashSaveIndicator(indEl, !error);
+      const coach = coachesCache.find((c) => c.id === id);
+      if (coach && !error) coach[field] = value;
+    }, 600);
+
+    body.querySelectorAll('.coach-name-input').forEach((el) => {
+      el.addEventListener('input', () => saveField(el.dataset.id, 'name', el.value.trim(), document.getElementById('saveInd-' + el.dataset.id)));
+    });
+    body.querySelectorAll('.coach-phone-input').forEach((el) => {
+      el.addEventListener('input', () => saveField(el.dataset.id, 'phone', el.value.trim(), document.getElementById('saveInd-' + el.dataset.id)));
+    });
+    body.querySelectorAll('.coach-price-input').forEach((el) => {
+      el.addEventListener('input', () => {
+        const val = parseFloat(el.value);
+        if (isNaN(val) || val < 0) return;
+        saveField(el.dataset.id, 'price_per_hour', val, document.getElementById('saveInd-' + el.dataset.id));
+      });
+    });
+    body.querySelectorAll('.coach-active-checkbox').forEach((cb) => {
+      cb.addEventListener('change', async (e) => {
+        const id = e.target.dataset.id;
+        const indEl = document.getElementById('saveInd-' + id);
+        if (!e.target.checked) {
+          const confirmed = await showConfirm('Do you wish to remove this coach from active duty?');
+          if (!confirmed) { e.target.checked = true; return; }
+        }
+        const { error } = await sb.from('coaches').update({ active: e.target.checked }).eq('id', id);
+        flashSaveIndicator(indEl, !error);
+        const coach = coachesCache.find((c) => c.id === id);
+        if (coach && !error) coach.active = e.target.checked;
+        applyCoachFilters();
+      });
+    });
+    body.querySelectorAll('.view-coach-btn').forEach((btn) => {
+      btn.addEventListener('click', () => openCoachModal(btn.dataset.id));
+    });
+
+    const countEl = document.getElementById('coachesCount');
+    const total = coachesCache.length;
+    countEl.textContent = list.length === total
+      ? `${total} coach${total === 1 ? '' : 'es'}`
+      : `Showing ${list.length} of ${total} coaches`;
+  }
+
+  function applyCoachFilters() {
+    const q = document.getElementById('coachSearch').value.trim().toLowerCase();
+    const filtered = !q ? coachesCache : coachesCache.filter(
+      (c) => c.name.toLowerCase().includes(q) || (c.phone || '').toLowerCase().includes(q)
+    );
+    renderCoachesTable(filtered);
+  }
+  document.getElementById('coachSearch').addEventListener('input', applyCoachFilters);
+
+  document.getElementById('addCoachBtn').addEventListener('click', async () => {
+    const nameInput = document.getElementById('newCoachName');
+    const phoneInput = document.getElementById('newCoachPhone');
+    const priceInput = document.getElementById('newCoachPrice');
+    const name = nameInput.value.trim();
+    const phone = phoneInput.value.trim();
+    const price = parseFloat(priceInput.value);
+    if (!name) { alert('Please enter the coach\'s name.'); return; }
+    if (isNaN(price) || price < 0) { alert('Please enter a valid price per hour.'); return; }
+
+    const { error } = await sb.from('coaches').insert({ name, phone: phone || null, price_per_hour: price });
+    if (error) { alert('Could not add coach: ' + error.message); return; }
+    nameInput.value = ''; phoneInput.value = ''; priceInput.value = '';
+    loadCoaches();
+  });
+
+  async function openCoachModal(id) {
+    const c = coachesCache.find((x) => x.id === id);
+    if (!c) return;
+
+    // Only submitted (locked-in) sessions count toward these metrics.
+    const { data: coachSessions } = await sb
+      .from('sessions')
+      .select('*')
+      .eq('coach_id', id)
+      .eq('submitted', true)
+      .order('session_date', { ascending: false });
+
+    const sessionCount = (coachSessions || []).length;
+    const totalPaid = (coachSessions || []).reduce((sum, s) => sum + Number(s.coach_fee || 0), 0);
+    const sessionRows = (coachSessions || [])
+      .map((s) => `<tr><td>${s.session_date}</td><td>${escapeHtml(s.session_slot)}</td><td>${Number(s.coach_fee || 0).toFixed(2)}</td></tr>`)
+      .join('');
+
+    document.getElementById('coachModalContent').innerHTML = `
+      <h2>${escapeHtml(c.name)}</h2>
+      <div class="modal-grid">
+        <div><span class="modal-label">Phone</span>${escapeHtml(c.phone || '—')}</div>
+        <div><span class="modal-label">Price / Hour</span>${Number(c.price_per_hour).toFixed(2)}</div>
+        <div><span class="modal-label">Status</span>${c.active !== false ? 'Active' : 'Inactive'}</div>
+        <div><span class="modal-label">Sessions Coached</span>${sessionCount}</div>
+        <div><span class="modal-label">Total Paid</span>${totalPaid.toFixed(2)}</div>
+      </div>
+      <div class="modal-sig-wrap">
+        <span class="modal-label">Session History</span>
+        ${sessionCount === 0
+          ? '<p class="hint">No submitted sessions yet.</p>'
+          : `<div class="table-wrap" style="margin-top:8px"><table><thead><tr><th>Date</th><th>Session</th><th>Fee</th></tr></thead><tbody>${sessionRows}</tbody></table></div>`
+        }
+      </div>
+    `;
+    document.getElementById('coachModal').style.display = 'flex';
+  }
+
+  document.getElementById('coachModalClose').addEventListener('click', () => {
+    document.getElementById('coachModal').style.display = 'none';
+  });
+  document.getElementById('coachModal').addEventListener('click', (e) => {
+    if (e.target.id === 'coachModal') e.target.style.display = 'none';
   });
 
   init();
