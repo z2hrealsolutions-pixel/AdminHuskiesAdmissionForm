@@ -144,6 +144,13 @@
   .confirm-actions{display:flex;gap:10px;justify-content:center;}
   .confirm-actions .btn-ghost, .confirm-actions .btn-submit{flex:1;}
 
+  #playerAnalyticsBody tr{cursor:pointer;}
+  #playerAnalyticsBody tr:hover{background:var(--bg);}
+  .pa-modal-sub{color:var(--ink-soft);font-size:0.88rem;margin:-10px 0 16px;}
+  .date-pill-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+  .date-pill{background:var(--bg);border:1px solid var(--border);border-radius:999px;padding:4px 10px;font-size:0.78rem;color:var(--ink);}
+  .date-pill.unpaid{background:rgba(193,68,61,0.08);border-color:var(--required);color:var(--required);}
+
   .table-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:auto;}
   table{width:100%;border-collapse:collapse;font-size:0.88rem;}
   th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--border);white-space:nowrap;}
@@ -217,6 +224,24 @@
   .save-indicator{font-size:0.75rem;color:var(--success);opacity:0;transition:opacity .2s ease;white-space:nowrap;}
   .save-indicator.show{opacity:1;}
   .save-indicator.saving{color:var(--ink-soft);}
+
+  .session-coach-card{
+    background:var(--card);border:1px solid var(--border);border-radius:12px;
+    padding:16px;margin-bottom:16px;
+  }
+  .session-coach-row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;}
+  .session-status-row{display:flex;align-items:center;gap:12px;margin-top:14px;flex-wrap:wrap;}
+  .session-status-badge{font-size:0.78rem;font-weight:600;padding:4px 12px;border-radius:999px;}
+  .session-status-badge.draft{background:rgba(242,169,59,0.15);color:#8a5a12;}
+  .session-status-badge.submitted{background:rgba(47,174,106,0.15);color:var(--success);}
+  .session-status-badge.modified{background:rgba(193,68,61,0.12);color:var(--required);}
+  .btn-submit-session{
+    background:#2563EB;color:#fff;border:none;padding:10px 24px;border-radius:9px;
+    font-family:'Oswald',sans-serif;font-weight:600;font-size:0.9rem;letter-spacing:0.02em;
+    text-transform:uppercase;cursor:pointer;margin-left:auto;
+  }
+  .btn-submit-session:hover{background:#1D4FC4;}
+  .btn-submit-session:disabled{opacity:0.6;cursor:not-allowed;}
 
   .calc-card{max-width:300px;}
   .calc-display{
@@ -303,6 +328,7 @@
       <button class="tab-btn active" data-tab="overview">Overview</button>
       <button class="tab-btn" data-tab="athletes">Athletes</button>
       <button class="tab-btn" data-tab="attendance">Attendance &amp; Payments</button>
+      <button class="tab-btn" data-tab="players">Player Analytics</button>
       <button class="tab-btn" data-tab="coaches">Coach Analytics</button>
     </div>
 
@@ -387,6 +413,27 @@
 
         <div class="session-tabs" id="sessionTabs"></div>
 
+        <div class="session-coach-card">
+          <div class="session-coach-row">
+            <div class="field" style="flex:1;min-width:200px;">
+              <label>Coach for the Session</label>
+              <div class="autosuggest-wrap">
+                <input type="text" id="sessionCoachSearch" placeholder="Search coach…" autocomplete="off">
+                <div class="autosuggest-list" id="coachAutosuggestList"></div>
+              </div>
+            </div>
+            <div class="field" style="width:130px;">
+              <label for="sessionFeeInput">Fee</label>
+              <input type="number" id="sessionFeeInput" placeholder="0.00">
+            </div>
+          </div>
+          <div class="session-status-row">
+            <span class="session-status-badge" id="sessionStatusBadge"></span>
+            <span class="save-indicator" id="sessionDraftIndicator"></span>
+            <button type="button" class="btn-submit-session" id="submitSessionBtn">Submit</button>
+          </div>
+        </div>
+
         <div class="add-athlete-row">
           <div class="autosuggest-wrap">
             <input type="text" id="attendeeSearch" placeholder="Type an athlete's name to add them…" autocomplete="off">
@@ -406,10 +453,11 @@
           <div class="summary-field">
             <label for="dailyTotal">Total</label>
             <input type="number" id="dailyTotal" placeholder="0.00">
+            <span class="save-indicator" id="totalSaveIndicator"></span>
           </div>
           <div class="summary-field">
-            <label for="dailyCoachFee">Coach's Fee</label>
-            <input type="number" id="dailyCoachFee" placeholder="0.00">
+            <label>Coach's Fee</label>
+            <div class="balance-display" id="dailyCoachFeeDisplay">0.00</div>
           </div>
           <div class="summary-field">
             <label>Other Expenses</label>
@@ -420,7 +468,6 @@
             <div class="balance-display" id="dailyBalance">0.00</div>
           </div>
           <button type="button" class="btn-ghost" id="openCalcBtn">Calculator</button>
-          <button type="button" class="btn-ghost" id="saveSummaryBtn">Save</button>
         </div>
 
         <div class="expenses-section">
@@ -472,10 +519,28 @@
             <span class="calc-use-label">Use this result for:</span>
             <div class="calc-use-buttons">
               <button type="button" class="btn-ghost" data-target="total">Total</button>
-              <button type="button" class="btn-ghost" data-target="fee">Coach's Fee</button>
+              <button type="button" class="btn-ghost" data-target="fee">Session Fee</button>
               <button type="button" class="btn-ghost" data-target="expense">Other Expense</button>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Player Analytics -->
+      <div class="tab-panel" id="panel-players">
+        <div class="session-tabs" id="paCategoryTabs">
+          <button type="button" class="session-tab-btn active" data-category="daily">Daily Practices</button>
+          <button type="button" class="session-tab-btn" data-category="team">Team Practices</button>
+        </div>
+
+        <input type="text" id="playerAnalyticsSearch" placeholder="Search by athlete, parent, phone, or school…">
+        <p class="list-count" id="playerAnalyticsCount"></p>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Athlete</th><th>School</th><th>Parent</th><th>Phone</th></tr></thead>
+            <tbody id="playerAnalyticsBody"></tbody>
+          </table>
         </div>
       </div>
 
@@ -503,6 +568,14 @@
     <div class="app-footer">Designed and Developed by Z2HxRealSolutions</div>
   </div>
 
+  <!-- Player Analytics detail modal -->
+  <div class="modal-overlay" id="playerAnalyticsModal">
+    <div class="modal-card">
+      <button class="modal-close" id="paModalClose">&times;</button>
+      <div id="paModalContent"></div>
+    </div>
+  </div>
+
   <!-- Coach detail modal -->
   <div class="modal-overlay" id="coachModal">
     <div class="modal-card">
@@ -525,6 +598,10 @@
   // (Settings → API). This key is safe to expose — RLS enforces access control.
   const SUPABASE_URL = 'https://tgcruxbmrwwuckcpnond.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_2-s_R7v61ftczlAmz8Hewg_t87gk6b5';
+
+  // Fixed fee charged per practice session (LKR) — used to calculate
+  // pending/paid totals in Player Analytics. Change this whenever the price changes.
+  const SESSION_FEE = 500; // TODO: set your actual per-session fee here
 
   const { createClient } = window.supabase;
   const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -600,13 +677,23 @@
       const { data: payments } = await sb.from('payments').select('*').order('payment_date');
       const { data: summaries } = await sb.from('daily_summary').select('*').order('session_date');
       const { data: expenses } = await sb.from('other_expenses').select('*').order('session_date');
+      const { data: sessions } = await sb.from('sessions').select('*').order('session_date');
+      const { data: coaches } = await sb.from('coaches').select('*');
 
       const athleteNameById = {};
       (athletes || []).forEach((a) => { athleteNameById[a.id] = a.athlete_name; });
+      const coachNameById = {};
+      (coaches || []).forEach((c) => { coachNameById[c.id] = c.name; });
 
       const otherExpensesByDate = {};
       (expenses || []).forEach((e) => {
         otherExpensesByDate[e.session_date] = (otherExpensesByDate[e.session_date] || 0) + Number(e.amount);
+      });
+
+      // Only submitted (locked) sessions count toward each day's Coach's Fee total
+      const coachFeeByDate = {};
+      (sessions || []).filter((s) => s.submitted).forEach((s) => {
+        coachFeeByDate[s.session_date] = (coachFeeByDate[s.session_date] || 0) + Number(s.submitted_coach_fee || 0);
       });
 
       const athletesSheetData = (athletes || []).map((a) => ({
@@ -648,13 +735,26 @@
         'Marked By': e.marked_by || '',
       }));
 
+      const sessionsSheetData = (sessions || []).map((s) => ({
+        'Date': s.session_date,
+        'Session': s.session_slot,
+        'Coach (current draft)': coachNameById[s.coach_id] || '',
+        'Draft Fee': s.coach_fee ?? '',
+        'Status': s.submitted ? 'Submitted' : 'Draft',
+        'Locked Coach': coachNameById[s.submitted_coach_id] || '',
+        'Locked Fee': s.submitted_coach_fee ?? '',
+        'Submitted At': s.submitted_at || '',
+        'Submitted By': s.submitted_by || '',
+      }));
+
       const summarySheetData = (summaries || []).map((s) => {
         const otherTotal = otherExpensesByDate[s.session_date] || 0;
-        const balance = (s.total !== null && s.coaches_fee !== null) ? (s.total - s.coaches_fee - otherTotal) : '';
+        const coachFee = coachFeeByDate[s.session_date] || 0;
+        const balance = s.total !== null ? (s.total - coachFee - otherTotal) : '';
         return {
           'Date': s.session_date,
           'Total': s.total ?? '',
-          "Coach's Fee": s.coaches_fee ?? '',
+          "Coach's Fee": coachFee,
           'Other Expenses': otherTotal,
           'Balance': balance,
           'Updated By': s.updated_by || '',
@@ -665,6 +765,7 @@
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(athletesSheetData), 'Athletes');
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(attendanceSheetData), 'Attendance');
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(expensesSheetData), 'Other Expenses');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sessionsSheetData), 'Sessions');
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summarySheetData), 'Daily Summary');
 
       const dateStr = new Date().toISOString().slice(0, 10);
@@ -696,6 +797,7 @@
       if (btn.dataset.tab === 'athletes') loadAthletes();
       if (btn.dataset.tab === 'attendance') renderSessionTabs();
       if (btn.dataset.tab === 'coaches') loadCoaches();
+      if (btn.dataset.tab === 'players') loadPlayerAnalytics();
     });
   });
 
@@ -1014,6 +1116,8 @@
     loadAttendance();
     loadDailySummary();
     loadOtherExpenses();
+    loadSessionCoachCard();
+    loadDailyCoachFeeSum();
   }
 
   async function loadAttendance() {
@@ -1141,45 +1245,55 @@
     loadAttendance();
   }
 
-  // ---- Daily Total / Coach's Fee / Other Expenses / Balance ----
+  // ---- Daily Total (autosaves) / Coach's Fee (computed) / Other Expenses / Balance ----
   const dailyTotalInput = document.getElementById('dailyTotal');
-  const dailyCoachFeeInput = document.getElementById('dailyCoachFee');
   const dailyBalanceEl = document.getElementById('dailyBalance');
   const otherExpensesTotalEl = document.getElementById('otherExpensesTotal');
+  const dailyCoachFeeDisplayEl = document.getElementById('dailyCoachFeeDisplay');
+  let dailyCoachFeeSum = 0;
 
   function recalcBalance() {
     const total = parseFloat(dailyTotalInput.value) || 0;
-    const fee = parseFloat(dailyCoachFeeInput.value) || 0;
     const otherTotal = currentExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
     otherExpensesTotalEl.textContent = otherTotal.toFixed(2);
-    dailyBalanceEl.textContent = (total - fee - otherTotal).toFixed(2);
+    dailyBalanceEl.textContent = (total - dailyCoachFeeSum - otherTotal).toFixed(2);
   }
-  dailyTotalInput.addEventListener('input', recalcBalance);
-  dailyCoachFeeInput.addEventListener('input', recalcBalance);
+
+  const saveDailyTotal = debounce(async () => {
+    const date = attendanceDateInput.value;
+    const total = dailyTotalInput.value === '' ? null : parseFloat(dailyTotalInput.value);
+    const indEl = document.getElementById('totalSaveIndicator');
+    indEl.classList.add('show', 'saving');
+    indEl.textContent = 'Saving…';
+    const { data: { session } } = await sb.auth.getSession();
+    const { error } = await sb.from('daily_summary').upsert(
+      { session_date: date, total, updated_by: session.user.email },
+      { onConflict: 'session_date' }
+    );
+    flashSaveIndicator(indEl, !error);
+  }, 600);
+
+  dailyTotalInput.addEventListener('input', () => {
+    recalcBalance();
+    saveDailyTotal();
+  });
 
   async function loadDailySummary() {
     const date = attendanceDateInput.value;
     const { data } = await sb.from('daily_summary').select('*').eq('session_date', date).maybeSingle();
     dailyTotalInput.value = data && data.total !== null ? data.total : '';
-    dailyCoachFeeInput.value = data && data.coaches_fee !== null ? data.coaches_fee : '';
     recalcBalance();
   }
 
-  document.getElementById('saveSummaryBtn').addEventListener('click', async () => {
+  // Coach's Fee for the day = sum of that day's SUBMITTED (locked) session
+  // fees only — draft, not-yet-submitted assignments don't count yet.
+  async function loadDailyCoachFeeSum() {
     const date = attendanceDateInput.value;
-    const { data: { session } } = await sb.auth.getSession();
-    const total = dailyTotalInput.value === '' ? null : parseFloat(dailyTotalInput.value);
-    const fee = dailyCoachFeeInput.value === '' ? null : parseFloat(dailyCoachFeeInput.value);
-    const btn = document.getElementById('saveSummaryBtn');
-    const original = btn.textContent;
-    btn.textContent = 'Saving…';
-    const { error } = await sb.from('daily_summary').upsert(
-      { session_date: date, total, coaches_fee: fee, updated_by: session.user.email },
-      { onConflict: 'session_date' }
-    );
-    btn.textContent = error ? 'Failed — retry' : 'Saved ✓';
-    setTimeout(() => { btn.textContent = original; }, 1500);
-  });
+    const { data } = await sb.from('sessions').select('submitted_coach_fee').eq('session_date', date).eq('submitted', true);
+    dailyCoachFeeSum = (data || []).reduce((sum, r) => sum + Number(r.submitted_coach_fee || 0), 0);
+    dailyCoachFeeDisplayEl.textContent = dailyCoachFeeSum.toFixed(2);
+    recalcBalance();
+  }
 
   // ---- Other Expenses (each entry is its own row: amount + required note) ----
   async function loadOtherExpenses() {
@@ -1224,6 +1338,149 @@
     amountInput.value = '';
     noteInput.value = '';
     loadOtherExpenses();
+  });
+
+  // ---- Coach for the Session (per session/slot; draft autosaves, Submit locks it) ----
+  let sessionCoachSelectedId = null;
+  let submittedSnapshot = { coach_id: null, coach_fee: null, submitted: false };
+
+  const sessionCoachSearchInput = document.getElementById('sessionCoachSearch');
+  const coachAutosuggestListEl = document.getElementById('coachAutosuggestList');
+  const sessionFeeInput = document.getElementById('sessionFeeInput');
+  const sessionDraftIndicator = document.getElementById('sessionDraftIndicator');
+  const sessionStatusBadge = document.getElementById('sessionStatusBadge');
+
+  async function loadSessionCoachCard() {
+    if (coachesCache.length === 0) {
+      const { data } = await sb.from('coaches').select('*').order('name');
+      coachesCache = data || [];
+    }
+    const date = attendanceDateInput.value;
+    const { data } = await sb.from('sessions').select('*').eq('session_date', date).eq('session_slot', currentSlot).maybeSingle();
+
+    sessionCoachSelectedId = data ? data.coach_id : null;
+    const currentCoach = coachesCache.find((c) => c.id === sessionCoachSelectedId);
+    sessionCoachSearchInput.value = currentCoach ? currentCoach.name : '';
+    sessionFeeInput.value = data && data.coach_fee !== null ? data.coach_fee : '';
+
+    submittedSnapshot = {
+      coach_id: data ? data.submitted_coach_id : null,
+      coach_fee: data ? data.submitted_coach_fee : null,
+      submitted: data ? !!data.submitted : false,
+    };
+    sessionDraftIndicator.classList.remove('show');
+    updateSessionStatusBadge();
+  }
+
+  function updateSessionStatusBadge() {
+    const currentFeeRaw = sessionFeeInput.value === '' ? null : parseFloat(sessionFeeInput.value);
+    const feeMatches = currentFeeRaw === submittedSnapshot.coach_fee;
+    const coachMatches = sessionCoachSelectedId === submittedSnapshot.coach_id;
+
+    if (!submittedSnapshot.submitted) {
+      sessionStatusBadge.textContent = 'Not yet submitted';
+      sessionStatusBadge.className = 'session-status-badge draft';
+    } else if (feeMatches && coachMatches) {
+      sessionStatusBadge.textContent = 'Submitted ✓';
+      sessionStatusBadge.className = 'session-status-badge submitted';
+    } else {
+      sessionStatusBadge.textContent = 'Modified — resubmit to update';
+      sessionStatusBadge.className = 'session-status-badge modified';
+    }
+  }
+
+  const saveSessionDraft = debounce(async () => {
+    const date = attendanceDateInput.value;
+    const slot = currentSlot;
+    const fee = sessionFeeInput.value === '' ? null : parseFloat(sessionFeeInput.value);
+    sessionDraftIndicator.classList.add('show', 'saving');
+    sessionDraftIndicator.textContent = 'Saving…';
+    const { error } = await sb.from('sessions').upsert(
+      { session_date: date, session_slot: slot, coach_id: sessionCoachSelectedId, coach_fee: fee },
+      { onConflict: 'session_date,session_slot' }
+    );
+    flashSaveIndicator(sessionDraftIndicator, !error);
+    updateSessionStatusBadge();
+  }, 600);
+
+  sessionCoachSearchInput.addEventListener('input', () => {
+    const q = sessionCoachSearchInput.value.trim().toLowerCase();
+    coachAutosuggestListEl.innerHTML = '';
+    if (!q) { coachAutosuggestListEl.classList.remove('show'); return; }
+    const matches = coachesCache.filter((c) => c.active !== false && c.name.toLowerCase().includes(q)).slice(0, 8);
+    if (matches.length === 0) {
+      coachAutosuggestListEl.innerHTML = '<div class="autosuggest-empty">No matching coach</div>';
+    } else {
+      matches.forEach((c) => {
+        const item = document.createElement('div');
+        item.className = 'autosuggest-item';
+        item.textContent = `${c.name} — ${Number(c.price_per_hour).toFixed(2)}/hr`;
+        item.addEventListener('click', () => selectSessionCoach(c));
+        coachAutosuggestListEl.appendChild(item);
+      });
+    }
+    coachAutosuggestListEl.classList.add('show');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#sessionCoachSearch') && !e.target.closest('#coachAutosuggestList')) {
+      coachAutosuggestListEl.classList.remove('show');
+    }
+  });
+
+  function selectSessionCoach(coach) {
+    sessionCoachSelectedId = coach.id;
+    sessionCoachSearchInput.value = coach.name;
+    coachAutosuggestListEl.classList.remove('show');
+    // Auto-fill the fee for timed slots (all exactly 1 hour). Team Practice
+    // has no set duration, so it's left for the admin to type manually.
+    if (currentSlot !== 'Team Practice') {
+      sessionFeeInput.value = coach.price_per_hour;
+    }
+    updateSessionStatusBadge();
+    saveSessionDraft();
+  }
+
+  sessionFeeInput.addEventListener('input', () => {
+    updateSessionStatusBadge();
+    saveSessionDraft();
+  });
+
+  document.getElementById('submitSessionBtn').addEventListener('click', async () => {
+    const date = attendanceDateInput.value;
+    const slot = currentSlot;
+    const fee = sessionFeeInput.value === '' ? null : parseFloat(sessionFeeInput.value);
+    const { data: { session } } = await sb.auth.getSession();
+    const btn = document.getElementById('submitSessionBtn');
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Submitting…';
+
+    const { error } = await sb.from('sessions').upsert(
+      {
+        session_date: date,
+        session_slot: slot,
+        coach_id: sessionCoachSelectedId,
+        coach_fee: fee,
+        submitted: true,
+        submitted_coach_id: sessionCoachSelectedId,
+        submitted_coach_fee: fee,
+        submitted_at: new Date().toISOString(),
+        submitted_by: session.user.email,
+      },
+      { onConflict: 'session_date,session_slot' }
+    );
+
+    btn.disabled = false;
+    btn.textContent = original;
+
+    if (error) {
+      alert('Could not submit this session: ' + error.message);
+      return;
+    }
+    submittedSnapshot = { coach_id: sessionCoachSelectedId, coach_fee: fee, submitted: true };
+    updateSessionStatusBadge();
+    loadDailyCoachFeeSum();
   });
 
   // ---- Calculator ----
@@ -1338,14 +1595,128 @@
       if (btn.dataset.target === 'total') {
         dailyTotalInput.value = value;
         recalcBalance();
+        saveDailyTotal();
       } else if (btn.dataset.target === 'fee') {
-        dailyCoachFeeInput.value = value;
-        recalcBalance();
+        sessionFeeInput.value = value;
+        updateSessionStatusBadge();
+        saveSessionDraft();
       } else if (btn.dataset.target === 'expense') {
         document.getElementById('newExpenseAmount').value = value;
       }
       document.getElementById('calcModal').style.display = 'none';
     });
+  });
+
+  // ---------- Player Analytics ----------
+  let paCategory = 'daily'; // 'daily' | 'team'
+
+  function dailyPracticeSlots() {
+    return [...WEEKDAY_SLOTS, ...WEEKEND_SLOTS].filter((s) => s !== 'Team Practice');
+  }
+
+  document.querySelectorAll('#paCategoryTabs .session-tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#paCategoryTabs .session-tab-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      paCategory = btn.dataset.category;
+    });
+  });
+
+  async function loadPlayerAnalytics() {
+    if (athletesCache.length === 0) {
+      const { data } = await sb.from('athletes').select('*').order('athlete_name');
+      athletesCache = data || [];
+    }
+    applyPlayerAnalyticsFilters();
+  }
+
+  function applyPlayerAnalyticsFilters() {
+    const q = document.getElementById('playerAnalyticsSearch').value.trim().toLowerCase();
+    const activeAthletes = athletesCache.filter((a) => a.active !== false);
+    const filtered = !q ? activeAthletes : activeAthletes.filter(
+      (a) =>
+        a.athlete_name.toLowerCase().includes(q) ||
+        a.parent_name.toLowerCase().includes(q) ||
+        a.parent_cell_phone.toLowerCase().includes(q) ||
+        a.school.toLowerCase().includes(q)
+    );
+    renderPlayerAnalyticsList(filtered);
+  }
+  document.getElementById('playerAnalyticsSearch').addEventListener('input', applyPlayerAnalyticsFilters);
+
+  function renderPlayerAnalyticsList(list) {
+    const body = document.getElementById('playerAnalyticsBody');
+    body.innerHTML = '';
+    list.forEach((a, i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${i + 1}</td>
+        <td>${escapeHtml(a.athlete_name)}</td>
+        <td>${escapeHtml(a.school)}</td>
+        <td>${escapeHtml(a.parent_name)}</td>
+        <td>${escapeHtml(a.parent_cell_phone)}</td>
+      `;
+      tr.addEventListener('click', () => openPlayerAnalyticsModal(a.id));
+      body.appendChild(tr);
+    });
+    document.getElementById('playerAnalyticsCount').textContent = `${list.length} athlete${list.length === 1 ? '' : 's'}`;
+  }
+
+  async function openPlayerAnalyticsModal(athleteId) {
+    const athlete = athletesCache.find((a) => a.id === athleteId);
+    if (!athlete) return;
+
+    const slots = paCategory === 'team' ? ['Team Practice'] : dailyPracticeSlots();
+    const { data: rows } = await sb.from('payments').select('*').eq('athlete_id', athleteId).in('session_slot', slots).order('payment_date');
+
+    const practiced = (rows || []).filter((r) => r.attended);
+    const absent = (rows || []).filter((r) => !r.attended);
+    const unpaid = practiced.filter((r) => r.status === 'unpaid');
+    const paid = practiced.filter((r) => r.status === 'paid');
+    const pendingAmount = unpaid.length * SESSION_FEE;
+    const totalPaidAmount = paid.length * SESSION_FEE;
+    const totalMarked = practiced.length + absent.length;
+    const attendanceRate = totalMarked > 0 ? Math.round((practiced.length / totalMarked) * 100) : 0;
+
+    const categoryLabel = paCategory === 'team' ? 'Team Practices' : 'Daily Practices';
+    const datePills = (list, cls) =>
+      list.length === 0
+        ? '<p class="hint">None</p>'
+        : `<div class="date-pill-list">${list.map((r) => `<span class="date-pill ${cls || ''}">${r.payment_date}</span>`).join('')}</div>`;
+
+    document.getElementById('paModalContent').innerHTML = `
+      <h2>${escapeHtml(athlete.athlete_name)}</h2>
+      <p class="pa-modal-sub">${categoryLabel} · ${escapeHtml(athlete.school)} · ${escapeHtml(athlete.parent_name)}</p>
+      <div class="cards-row">
+        <div class="stat-card"><span class="stat-value">${practiced.length}</span><span class="stat-label">Sessions Practiced</span></div>
+        <div class="stat-card"><span class="stat-value">${absent.length}</span><span class="stat-label">Sessions Absent</span></div>
+        <div class="stat-card"><span class="stat-value">${attendanceRate}%</span><span class="stat-label">Attendance Rate</span></div>
+      </div>
+      <div class="cards-row">
+        <div class="stat-card"><span class="stat-value">${pendingAmount.toFixed(2)}</span><span class="stat-label">Pending (LKR)</span></div>
+        <div class="stat-card"><span class="stat-value">${totalPaidAmount.toFixed(2)}</span><span class="stat-label">Total Paid (LKR)</span></div>
+      </div>
+      <div class="modal-sig-wrap">
+        <span class="modal-label">Pending Payment Dates (${unpaid.length})</span>
+        ${datePills(unpaid, 'unpaid')}
+      </div>
+      <div class="modal-sig-wrap">
+        <span class="modal-label">Practiced Dates</span>
+        ${datePills(practiced)}
+      </div>
+      <div class="modal-sig-wrap">
+        <span class="modal-label">Absent Dates</span>
+        ${datePills(absent)}
+      </div>
+    `;
+    document.getElementById('playerAnalyticsModal').style.display = 'flex';
+  }
+
+  document.getElementById('paModalClose').addEventListener('click', () => {
+    document.getElementById('playerAnalyticsModal').style.display = 'none';
+  });
+  document.getElementById('playerAnalyticsModal').addEventListener('click', (e) => {
+    if (e.target.id === 'playerAnalyticsModal') e.target.style.display = 'none';
   });
 
   // ---------- Coach Analytics ----------
@@ -1473,14 +1844,14 @@
     const { data: coachSessions } = await sb
       .from('sessions')
       .select('*')
-      .eq('coach_id', id)
+      .eq('submitted_coach_id', id)
       .eq('submitted', true)
       .order('session_date', { ascending: false });
 
     const sessionCount = (coachSessions || []).length;
-    const totalPaid = (coachSessions || []).reduce((sum, s) => sum + Number(s.coach_fee || 0), 0);
+    const totalPaid = (coachSessions || []).reduce((sum, s) => sum + Number(s.submitted_coach_fee || 0), 0);
     const sessionRows = (coachSessions || [])
-      .map((s) => `<tr><td>${s.session_date}</td><td>${escapeHtml(s.session_slot)}</td><td>${Number(s.coach_fee || 0).toFixed(2)}</td></tr>`)
+      .map((s) => `<tr><td>${s.session_date}</td><td>${escapeHtml(s.session_slot)}</td><td>${Number(s.submitted_coach_fee || 0).toFixed(2)}</td></tr>`)
       .join('');
 
     document.getElementById('coachModalContent').innerHTML = `
